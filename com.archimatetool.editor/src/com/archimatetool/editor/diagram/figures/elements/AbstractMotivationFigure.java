@@ -31,6 +31,7 @@ public abstract class AbstractMotivationFigure extends AbstractTextControlContai
     
     @Override
     protected void drawFigure(Graphics graphics) {
+    	initGraphics(graphics);
         if(getFigureDelegate() != null) {
             getFigureDelegate().drawFigure(graphics);
             return;

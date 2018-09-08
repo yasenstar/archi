@@ -39,6 +39,7 @@ public class EventFigure extends AbstractTextControlContainerFigure {
     
     @Override
     public void drawFigure(Graphics graphics) {
+    	initGraphics(graphics);
         if(getFigureDelegate() != null) {
             getFigureDelegate().drawFigure(graphics);
             drawIcon(graphics);

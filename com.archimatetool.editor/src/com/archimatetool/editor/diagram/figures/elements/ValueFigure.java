@@ -32,6 +32,7 @@ public class ValueFigure extends AbstractTextControlContainerFigure {
     
     @Override
     public void drawFigure(Graphics graphics) {
+    	initGraphics(graphics);
         graphics.pushState();
         
         Rectangle bounds = getBounds().getCopy();

@@ -31,6 +31,7 @@ public class DeliverableFigure extends AbstractTextControlContainerFigure {
     
     @Override
     protected void drawFigure(Graphics graphics) {
+    	initGraphics(graphics);
         graphics.pushState();
         
         Rectangle bounds = getBounds().getCopy();

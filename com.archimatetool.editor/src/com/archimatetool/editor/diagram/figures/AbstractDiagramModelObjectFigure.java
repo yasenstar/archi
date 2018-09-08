@@ -44,6 +44,8 @@ implements IDiagramModelObjectFigure {
     private Color fFillColor;
     private Color fFontColor;
     private Color fLineColor;
+
+    private int border = 2;
     
     
     // Delegate to do drawing
@@ -81,9 +83,15 @@ implements IDiagramModelObjectFigure {
      * @param graphics
      */
     protected void drawFigure(Graphics graphics) {
+    	initGraphics(graphics);
         if(getFigureDelegate() != null) {
             getFigureDelegate().drawFigure(graphics);
         }
+    }
+    
+    protected void initGraphics(Graphics graphics) {
+    	graphics.setLineWidth(border);
+    	graphics.setClip(getBounds().getCopy().expand(border,border));
     }
     
     /**
