@@ -41,23 +41,14 @@ import com.archimatetool.model.IProperty;
 public class CSVExporter implements CSVConstants {
     
     private char fDelimiter = ',';
-    private String fFilePrefix = ""; //$NON-NLS-1$
-    
     private boolean fStripNewLines = false;
     
     // See http://www.creativyst.com/Doc/Articles/CSV/CSV01.htm#CSVAndExcel
     private boolean fUseLeadingCharsHack = false;
     
+    private boolean fWriteHeader = true;
+
     private String fEncoding = "UTF-8"; //$NON-NLS-1$
-    
-    /*
-     * Internal option. BUT...
-     * If one exports to the csv files with a model that has properties, then edits the model and removes all properties,
-     * and re-exports to CSV. The original "properties.csv" file would still exist, containing orphans.
-     * So it seems better to export all three to be on the safe side, even if one is empty.
-     * This way we can be sure that elements, relations, and properties are always a matched tuple.
-     */
-    private boolean fWriteEmptyFile = true;
     
     private IArchimateModel fModel;
     
@@ -65,10 +56,28 @@ public class CSVExporter implements CSVConstants {
         fModel = model;
     }
     
-    public void export(File folder) throws IOException {
-        writeModelAndElements(new File(folder, createElementsFileName()));
-        writeRelationships(new File(folder, createRelationsFileName()));
-        writeProperties(new File(folder, createPropertiesFileName()));
+    public void export(File file) throws IOException {
+        Writer writer = createOutputStreamWriter(file);
+        
+        // Write BOM
+        writeBOM(writer);
+        
+        // Write Header
+        if(fWriteHeader) {
+            writer.write(createHeader(HEADER));
+            writer.write(CRLF);
+        }
+        
+        // Model and Elements
+        writeModelAndElements(writer);
+        
+        // Relationships
+        writeRelationships(writer);
+        
+        // Properties
+        writeProperties(writer);
+        
+        writer.close();
     }
     
     /**
@@ -78,16 +87,6 @@ public class CSVExporter implements CSVConstants {
      */
     public void setDelimiter(char delimiter) {
         fDelimiter = delimiter;
-    }
-    
-    /**
-     * Set the prefix to use on file names. A null value is ignored.
-     * @param prefix
-     */
-    public void setFilePrefix(String prefix) {
-        if(prefix != null) {
-            fFilePrefix = prefix;
-        }
     }
     
     public void setStripNewLines(boolean set) {
@@ -101,23 +100,15 @@ public class CSVExporter implements CSVConstants {
     public void setEncoding(String encoding) {
         fEncoding = encoding;
     }
+
+    public void setWriteHeader(boolean set) {
+        fWriteHeader = set;
+    }
     
     /**
      * Write the Model and All Elements
      */
-    private void writeModelAndElements(File file) throws IOException {
-        Writer writer = createOutputStreamWriter(file);
-        
-        // Write BOM
-        writeBOM(writer);
-        
-        // Write Header
-        String header = createHeader(MODEL_ELEMENTS_HEADER);
-        writer.write(header);
-        
-        // CRLF
-        writer.write(CRLF);
-        
+    private void writeModelAndElements(Writer writer) throws IOException {
         // Write Model
         String modelRow = createModelRow();
         writer.write(modelRow);
@@ -130,8 +121,6 @@ public class CSVExporter implements CSVConstants {
         writeElementsInFolder(writer, fModel.getFolder(FolderType.MOTIVATION));
         writeElementsInFolder(writer, fModel.getFolder(FolderType.IMPLEMENTATION_MIGRATION));
         writeElementsInFolder(writer, fModel.getFolder(FolderType.OTHER));
-        
-        writer.close();
     }
     
     /**
@@ -156,23 +145,9 @@ public class CSVExporter implements CSVConstants {
     /**
      * Write All Relationships
      */
-    private void writeRelationships(File file) throws IOException {
+    private void writeRelationships(Writer writer) throws IOException {
         List<IArchimateConcept> concepts = getConcepts(fModel.getFolder(FolderType.RELATIONS));
         sort(concepts);
-        
-        // Are there any to write?
-        if(!fWriteEmptyFile && concepts.isEmpty()) {
-            return;
-        }
-        
-        Writer writer = createOutputStreamWriter(file);
-        
-        // Write BOM
-        writeBOM(writer);
-        
-        // Write Header
-        String header = createHeader(RELATIONSHIPS_HEADER);
-        writer.write(header);
         
         // Write Relationships
         for(IArchimateConcept concept : concepts) {
@@ -181,28 +156,12 @@ public class CSVExporter implements CSVConstants {
                 writer.write(createRelationshipRow((IArchimateRelationship)concept));
             }
         }
-        
-        writer.close();
     }
     
     /**
      * Write All Properties
      */
-    private void writeProperties(File file) throws IOException {
-        // Are there any to write?
-        if(!fWriteEmptyFile && !hasProperties()) {
-            return;
-        }
-        
-        Writer writer = createOutputStreamWriter(file);
-        
-        // Write BOM
-        writeBOM(writer);
-        
-        // Write Header
-        String header = createHeader(PROPERTIES_HEADER);
-        writer.write(header);
-        
+    private void writeProperties(Writer writer) throws IOException {
         // Write Model Properties
         for(IProperty property : fModel.getProperties()) {
             writer.write(CRLF);
@@ -259,27 +218,6 @@ public class CSVExporter implements CSVConstants {
     }
     
     /**
-     * @return true if the model has any user properties
-     */
-    boolean hasProperties() {
-        if(!fModel.getProperties().isEmpty()) {
-            return true;
-        }
-        
-        for(Iterator<EObject> iter = fModel.eAllContents(); iter.hasNext();) {
-            EObject eObject = iter.next();
-            if(eObject instanceof IArchimateConcept) {
-                IArchimateConcept concept = (IArchimateConcept)eObject;
-                if(!concept.getProperties().isEmpty()) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * Create a Header from given string elements
      */
     String createHeader(String[] elements) {
@@ -304,11 +242,11 @@ public class CSVExporter implements CSVConstants {
     String createModelRow() {
         StringBuffer sb = new StringBuffer();
         
-        String id = fModel.getId();
-        sb.append(surroundWithQuotes(id));
+        sb.append(surroundWithQuotes(ARCHIMATE_MODEL_TYPE));
         sb.append(fDelimiter);
         
-        sb.append(surroundWithQuotes(ARCHIMATE_MODEL_TYPE));
+        String id = fModel.getId();
+        sb.append(surroundWithQuotes(id));
         sb.append(fDelimiter);
         
         String name = normalise(fModel.getName());
@@ -317,6 +255,11 @@ public class CSVExporter implements CSVConstants {
         
         String purpose = normalise(fModel.getPurpose());
         sb.append(surroundWithQuotes(purpose));
+        sb.append(fDelimiter);
+        
+        sb.append(surroundWithQuotes("")); //$NON-NLS-1$
+        sb.append(fDelimiter);
+        sb.append(surroundWithQuotes("")); //$NON-NLS-1$
         
         return sb.toString();
     }
@@ -327,11 +270,11 @@ public class CSVExporter implements CSVConstants {
     String createElementRow(IArchimateElement element) {
         StringBuffer sb = new StringBuffer();
         
-        String id = element.getId();
-        sb.append(surroundWithQuotes(id));
+        sb.append(surroundWithQuotes(element.eClass().getName()));
         sb.append(fDelimiter);
         
-        sb.append(surroundWithQuotes(element.eClass().getName()));
+        String id = element.getId();
+        sb.append(surroundWithQuotes(id));
         sb.append(fDelimiter);
         
         String name = normalise(element.getName());
@@ -340,6 +283,11 @@ public class CSVExporter implements CSVConstants {
         
         String documentation = normalise(element.getDocumentation());
         sb.append(surroundWithQuotes(documentation));
+        sb.append(fDelimiter);
+        
+        sb.append(surroundWithQuotes("")); //$NON-NLS-1$
+        sb.append(fDelimiter);
+        sb.append(surroundWithQuotes("")); //$NON-NLS-1$
         
         return sb.toString();
     }
@@ -350,11 +298,11 @@ public class CSVExporter implements CSVConstants {
     String createRelationshipRow(IArchimateRelationship relationship) {
         StringBuffer sb = new StringBuffer();
         
-        String id = relationship.getId();
-        sb.append(surroundWithQuotes(id));
+        sb.append(surroundWithQuotes(relationship.eClass().getName()));
         sb.append(fDelimiter);
         
-        sb.append(surroundWithQuotes(relationship.eClass().getName()));
+        String id = relationship.getId();
+        sb.append(surroundWithQuotes(id));
         sb.append(fDelimiter);
         
         String name = normalise(relationship.getName());
@@ -398,9 +346,17 @@ public class CSVExporter implements CSVConstants {
     String createPropertyRow(String conceptID, String key, String value) {
         StringBuffer sb = new StringBuffer();
         
+        sb.append(surroundWithQuotes(PROPERTY_TYPE));
+        sb.append(fDelimiter);
+
         sb.append(surroundWithQuotes(conceptID));
         sb.append(fDelimiter);
         
+        sb.append(surroundWithQuotes("")); //$NON-NLS-1$
+        sb.append(fDelimiter);
+        sb.append(surroundWithQuotes("")); //$NON-NLS-1$
+        sb.append(fDelimiter);
+
         key = normalise(key);
         sb.append(surroundWithQuotes(key));
         sb.append(fDelimiter);
@@ -503,18 +459,6 @@ public class CSVExporter implements CSVConstants {
                 return name1.compareTo(name2);
             }
         });
-    }
-    
-    String createElementsFileName() {
-        return fFilePrefix + ELEMENTS_FILENAME + FILE_EXTENSION;
-    }
-    
-    String createRelationsFileName() {
-        return fFilePrefix + RELATIONS_FILENAME + FILE_EXTENSION;
-    }
-    
-    String createPropertiesFileName() {
-        return fFilePrefix + PROPERTIES_FILENAME + FILE_EXTENSION;
     }
     
     OutputStreamWriter createOutputStreamWriter(File file) throws IOException {

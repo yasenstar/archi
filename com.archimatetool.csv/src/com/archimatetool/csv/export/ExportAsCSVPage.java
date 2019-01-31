@@ -1,7 +1,8 @@
 package com.archimatetool.csv.export;
 
 import java.io.File;
-import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.InvalidPathException;
 
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.wizard.WizardPage;
@@ -15,8 +16,8 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.DirectoryDialog;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
@@ -40,16 +41,11 @@ public class ExportAsCSVPage extends WizardPage implements IPreferenceConstants,
 
     private static String HELP_ID = "com.archimatetool.help.ExportAsCSVPage"; //$NON-NLS-1$
     
-    private Text fFolderTextField;
+    private Text fFileTextField;
     private Combo fDelimiterCombo;
-    private Text fFilePrefixTextField;
     private Button fStripNewlinesButton;
     private Button fLeadingCharsButton;
-    
-    private Label fElementsFileNameLabel;
-    private Label fRelationsFileNameLabel;
-    private Label fPropertiesFileNameLabel;
-    
+    private Button fWriteHeaderButton;
     private Combo fEncodingCombo;
     
     public ExportAsCSVPage() {
@@ -76,28 +72,27 @@ public class ExportAsCSVPage extends WizardPage implements IPreferenceConstants,
         Label label = new Label(exportGroup, SWT.NULL);
         label.setText(Messages.ExportAsCSVPage_3);
         
-        fFolderTextField = new Text(exportGroup, SWT.BORDER | SWT.SINGLE);
-        fFolderTextField.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+        fFileTextField = new Text(exportGroup, SWT.BORDER | SWT.SINGLE);
+        fFileTextField.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         
         // Single text control so strip CRLFs
-        UIUtils.conformSingleTextControl(fFolderTextField);
+        UIUtils.conformSingleTextControl(fFileTextField);
         
-        fFolderTextField.addModifyListener(new ModifyListener() {
+        fFileTextField.addModifyListener(new ModifyListener() {
             @Override
             public void modifyText(ModifyEvent e) {
                 validateFields();
-                updateFileLabels();
             }
         });
         
-        Button folderButton = new Button(exportGroup, SWT.PUSH);
-        folderButton.setText(Messages.ExportAsCSVPage_4);
-        folderButton.addSelectionListener(new SelectionAdapter() {
+        Button fileButton = new Button(exportGroup, SWT.PUSH);
+        fileButton.setText(Messages.ExportAsCSVPage_4);
+        fileButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                String folderPath = chooseFolderPath();
-                if(folderPath != null) {
-                    fFolderTextField.setText(folderPath);
+                String file = chooseFilePath();
+                if(file != null) {
+                    fFileTextField.setText(file);
                 }
             }
         });
@@ -111,27 +106,6 @@ public class ExportAsCSVPage extends WizardPage implements IPreferenceConstants,
         gd.horizontalSpan = 2;
         fDelimiterCombo.setLayoutData(gd);
         
-        label = new Label(exportGroup, SWT.NULL);
-        label.setText(Messages.ExportAsCSVPage_6);
-        
-        fFilePrefixTextField = new Text(exportGroup, SWT.BORDER | SWT.SINGLE);
-        fFilePrefixTextField.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-        gd = new GridData();
-        gd.widthHint = 100;
-        gd.horizontalSpan = 2;
-        fFilePrefixTextField.setLayoutData(gd);
-        
-        fFilePrefixTextField.addModifyListener(new ModifyListener() {
-            @Override
-            public void modifyText(ModifyEvent e) {
-                validateFields();
-                updateFileLabels();
-            }
-        });
-        
-        // Single text control so strip CRLFs
-        UIUtils.conformSingleTextControl(fFilePrefixTextField);
-        
         // Encoding
         label = new Label(exportGroup, SWT.NULL);
         label.setText(Messages.ExportAsCSVPage_15);
@@ -143,23 +117,20 @@ public class ExportAsCSVPage extends WizardPage implements IPreferenceConstants,
         optionsGroup.setLayout(new GridLayout(1, false));
         optionsGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         
+        // Strip new lines
         fStripNewlinesButton = new Button(optionsGroup, SWT.CHECK);
         fStripNewlinesButton.setText(Messages.ExportAsCSVPage_8);
         
+        // Leding chars
         // See http://www.creativyst.com/Doc/Articles/CSV/CSV01.htm#CSVAndExcel
         fLeadingCharsButton = new Button(optionsGroup, SWT.CHECK);
         fLeadingCharsButton.setText(Messages.ExportAsCSVPage_9);
         
+        // Write header
+        fWriteHeaderButton = new Button(optionsGroup, SWT.CHECK);
+        fWriteHeaderButton.setText(Messages.ExportAsCSVPage_6);
+        
         label = new Label(container, SWT.NULL);
-        
-        Group filesGroup = new Group(container, SWT.NULL);
-        filesGroup.setText(Messages.ExportAsCSVPage_10);
-        filesGroup.setLayout(new GridLayout(1, false));
-        filesGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-        
-        fElementsFileNameLabel = new Label(filesGroup, SWT.NULL);
-        fRelationsFileNameLabel = new Label(filesGroup, SWT.NULL);
-        fPropertiesFileNameLabel = new Label(filesGroup, SWT.NULL);
         
         loadPreferences();
         
@@ -168,20 +139,10 @@ public class ExportAsCSVPage extends WizardPage implements IPreferenceConstants,
     }
     
     /**
-     * Update file labels in reponse to text edits
+     * @return The export file path
      */
-    private void updateFileLabels() {
-        fElementsFileNameLabel.setText(fFilePrefixTextField.getText() + ELEMENTS_FILENAME + FILE_EXTENSION);
-        fRelationsFileNameLabel.setText(fFilePrefixTextField.getText() + RELATIONS_FILENAME + FILE_EXTENSION);
-        fPropertiesFileNameLabel.setText(fFilePrefixTextField.getText() + PROPERTIES_FILENAME + FILE_EXTENSION);
-        fElementsFileNameLabel.getParent().layout();
-    }
-    
-    /**
-     * @return The export folder path
-     */
-    String getExportFolderPath() {
-        return fFolderTextField.getText();
+    String getExportFilePath() {
+        return fFileTextField.getText();
     }
     
     /**
@@ -189,13 +150,6 @@ public class ExportAsCSVPage extends WizardPage implements IPreferenceConstants,
      */
     int getDelimiterIndex() {
         return fDelimiterCombo.getSelectionIndex();
-    }
-    
-    /**
-     * @return The prefix for file name
-     */
-    String getFilenamePrefix() {
-        return fFilePrefixTextField.getText().trim();
     }
     
     boolean getStripNewlines() {
@@ -206,37 +160,40 @@ public class ExportAsCSVPage extends WizardPage implements IPreferenceConstants,
         return fLeadingCharsButton.getSelection();
     }
     
+    boolean getWriteHeader() {
+        return fWriteHeaderButton.getSelection();
+    }
+
     String getEncoding() {
         return fEncodingCombo.getText();
     }
 
-    private String chooseFolderPath() {
-        DirectoryDialog dialog = new DirectoryDialog(Display.getCurrent().getActiveShell());
+    private String chooseFilePath() {
+        FileDialog dialog = new FileDialog(Display.getCurrent().getActiveShell(), SWT.SAVE);
         dialog.setText(Messages.ExportAsCSVPage_11);
-        dialog.setMessage(Messages.ExportAsCSVPage_12);
+        dialog.setFilterExtensions(new String[] { FILE_EXTENSION_WILDCARD, "*.*" } ); //$NON-NLS-1$ 
+        dialog.setFileName(getExportFilePath());
         return dialog.open();
     }
 
     private void validateFields() {
-        // Folder path
-        String folderPath = getExportFolderPath();
-        if(!StringUtils.isSetAfterTrim(folderPath)) {
+        // File path
+        String filePath = getExportFilePath();
+        if(!StringUtils.isSetAfterTrim(filePath)) {
             setErrorMessage(Messages.ExportAsCSVPage_13);
             return;
         }
         
-        File file = new File(folderPath);
-        if(file.isFile()) {
+        if(new File(filePath).isDirectory()) {
             setErrorMessage(Messages.ExportAsCSVPage_14);
             return;
         }
         
         // Check valid file name
         try {
-            file = new File(getExportFolderPath(), fFilePrefixTextField.getText() + ELEMENTS_FILENAME + FILE_EXTENSION);
-            file.getCanonicalPath();
+            FileSystems.getDefault().getPath(filePath);
         }
-        catch(IOException ex) {
+        catch(InvalidPathException ex) {
             setErrorMessage(Messages.ExportAsCSVPage_14);
             return;
         }
@@ -255,36 +212,30 @@ public class ExportAsCSVPage extends WizardPage implements IPreferenceConstants,
 
     void storePreferences() {
         IPreferenceStore store = CSVImportExportPlugin.getDefault().getPreferenceStore();
-        store.setValue(CSV_EXPORT_PREFS_LAST_FOLDER, getExportFolderPath());
+        store.setValue(CSV_EXPORT_PREFS_LAST_FILE, new File(getExportFilePath()).getPath());
         store.setValue(CSV_EXPORT_PREFS_SEPARATOR, getDelimiterIndex());
-        store.setValue(CSV_EXPORT_PREFS_FILE_PREFIX, getFilenamePrefix());
         store.setValue(CSV_EXPORT_PREFS_STRIP_NEW_LINES, getStripNewlines());
         store.setValue(CSV_EXPORT_PREFS_LEADING_CHARS_HACK, getUseLeadingCharsHack());
         store.setValue(CSV_EXPORT_PREFS_ENCODING, getEncoding());
+        store.setValue(CSV_EXPORT_PREFS_WRITE_HEADER, getWriteHeader());
     }
     
     void loadPreferences() {
         IPreferenceStore store = CSVImportExportPlugin.getDefault().getPreferenceStore();
         
-        // Last saved folder
-        String lastFolderPath = store.getString(CSV_EXPORT_PREFS_LAST_FOLDER);
-        if(lastFolderPath != null && !"".equals(lastFolderPath)) { //$NON-NLS-1$
-            fFolderTextField.setText(lastFolderPath);
+        // Last saved file
+        String lastFilePath = store.getString(CSV_EXPORT_PREFS_LAST_FILE);
+        if(lastFilePath != null && !"".equals(lastFilePath)) { //$NON-NLS-1$
+            fFileTextField.setText(lastFilePath);
         }
         else {
-            fFolderTextField.setText(new File(System.getProperty("user.home")).getPath()); //$NON-NLS-1$
+            fFileTextField.setText(new File(System.getProperty("user.home"), "export.csv").getPath()); //$NON-NLS-1$ //$NON-NLS-2$
         }
 
         // Delimiter
         int separator = store.getInt(CSV_EXPORT_PREFS_SEPARATOR);
         if(separator > -1 && separator < DELIMITER_NAMES.length) {
             fDelimiterCombo.setText(DELIMITER_NAMES[separator]);
-        }
-        
-        // Last used file prefix
-        String lastFilePrefix = store.getString(CSV_EXPORT_PREFS_FILE_PREFIX);
-        if(lastFilePrefix != null && !"".equals(lastFilePrefix)) { //$NON-NLS-1$
-            fFilePrefixTextField.setText(lastFilePrefix);
         }
         
         // Strip newlines
@@ -298,5 +249,9 @@ public class ExportAsCSVPage extends WizardPage implements IPreferenceConstants,
         // Encoding
         String encoding = store.getString(CSV_EXPORT_PREFS_ENCODING);
         fEncodingCombo.setText(encoding);
+        
+        // Write Header
+        selected = store.getBoolean(CSV_EXPORT_PREFS_WRITE_HEADER);
+        fWriteHeaderButton.setSelection(selected);
     }
 }

@@ -18,23 +18,14 @@ import java.util.List;
 public interface CSVConstants {
     
     String ARCHIMATE_MODEL_TYPE = "ArchimateModel";
+    String PROPERTY_TYPE = "Property";
     
-    String[] MODEL_ELEMENTS_HEADER = {
-            "ID", "Type", "Name", "Documentation"
-    };
-    
-    String[] RELATIONSHIPS_HEADER = {
-        "ID", "Type", "Name", "Documentation", "Source", "Target"
+    String[] HEADER = {
+            "Type", "ID", "Name", "Documentation", "Source/Key", "Target/Value"
     };
 
-    String[] PROPERTIES_HEADER = {
-        "ID", "Key", "Value"
-    };
-    
-    String ELEMENTS_FILENAME = "elements";
-    String RELATIONS_FILENAME = "relations";
-    String PROPERTIES_FILENAME = "properties";
     String FILE_EXTENSION = ".csv";
+    String FILE_EXTENSION_WILDCARD = "*.csv";
     
     String CRLF = "\r\n";
     

@@ -105,22 +105,22 @@ public class CSVExporterTests {
         assertTrue(exporter.needsLeadingCharHack("   Hello World"));
         assertTrue(exporter.needsLeadingCharHack("0123"));
     }
-
-    @Test
+    
+    @Test 
     public void testCreateModelRow() {
-        assertEquals("\"0a9d34ab\",\"ArchimateModel\",\"The Main Model\",\"This is the Documentation\"", exporter.createModelRow());
+        assertEquals("\"ArchimateModel\",\"0a9d34ab\",\"The Main Model\",\"This is the Documentation\",\"\",\"\"", exporter.createModelRow());
     }
     
     @Test
     public void testCreateModelRowWithSemicolon() {
         exporter.setDelimiter(';');
-        assertEquals("\"0a9d34ab\";\"ArchimateModel\";\"The Main Model\";\"This is the Documentation\"", exporter.createModelRow());
+        assertEquals("\"ArchimateModel\";\"0a9d34ab\";\"The Main Model\";\"This is the Documentation\";\"\";\"\"", exporter.createModelRow());
     }
     
     @Test
     public void testCreateModelRowWithTab() {
         exporter.setDelimiter('\t');
-        assertEquals("\"0a9d34ab\"\t\"ArchimateModel\"\t\"The Main Model\"\t\"This is the Documentation\"", exporter.createModelRow());
+        assertEquals("\"ArchimateModel\"\t\"0a9d34ab\"\t\"The Main Model\"\t\"This is the Documentation\"\t\"\"\t\"\"", exporter.createModelRow());
     }
     
     @Test
@@ -130,7 +130,7 @@ public class CSVExporterTests {
         element.setName("The Main Man");
         element.setDocumentation("This is the Documentation");
         
-        assertEquals("\"a1234567\",\"BusinessActor\",\"The Main Man\",\"This is the Documentation\"", exporter.createElementRow(element));
+        assertEquals("\"BusinessActor\",\"a1234567\",\"The Main Man\",\"This is the Documentation\",\"\",\"\"", exporter.createElementRow(element));
     }
     
     @Test
@@ -141,7 +141,7 @@ public class CSVExporterTests {
         element.setDocumentation("This is the\r\nDocumentation");
         exporter.setStripNewLines(true);
         
-        assertEquals("\"d452fda\",\"BusinessActor\",\"The Main Man\",\"This is the Documentation\"", exporter.createElementRow(element));
+        assertEquals("\"BusinessActor\",\"d452fda\",\"The Main Man\",\"This is the Documentation\",\"\",\"\"", exporter.createElementRow(element));
     }
 
     @Test
@@ -153,7 +153,7 @@ public class CSVExporterTests {
         
         exporter.setUseLeadingCharsHack(true);
         
-        assertEquals("\"=\"\"087dfa23\"\"\",\"BusinessActor\",\"=\"\"  The Main Man\"\"\",\"=\"\"0123\"\"\"", exporter.createElementRow(element));
+        assertEquals("\"BusinessActor\",\"=\"\"087dfa23\"\"\",\"=\"\"  The Main Man\"\"\",\"=\"\"0123\"\"\",\"\",\"\"", exporter.createElementRow(element));
     }
 
     @Test
@@ -170,7 +170,7 @@ public class CSVExporterTests {
         relation.setSource(elementSource);
         relation.setTarget(elementTarget);
         
-        assertEquals("\"56435fd6\",\"AccessRelationship\",\"My relation\",\"This is the Documentation\",\"cfde5463e\",\"b1234dff\"",
+        assertEquals("\"AccessRelationship\",\"56435fd6\",\"My relation\",\"This is the Documentation\",\"cfde5463e\",\"b1234dff\"",
                 exporter.createRelationshipRow(relation));
     }
     
@@ -184,12 +184,12 @@ public class CSVExporterTests {
         property.setValue("Some value");
         element.getProperties().add(property);
         
-        assertEquals("\"1234567a\",\"Some key\",\"Some value\"", exporter.createPropertyRow(element.getId(), property));
+        assertEquals("\"Property\",\"1234567a\",\"\",\"\",\"Some key\",\"Some value\"", exporter.createPropertyRow(element.getId(), property));
     }
 
     @Test
     public void testCreatePropertyRow_String() {
-        assertEquals("\"1234567a\",\"strength\",\"12\"", exporter.createPropertyRow("1234567a", "strength", "12"));
+        assertEquals("\"Property\",\"1234567a\",\"\",\"\",\"strength\",\"12\"", exporter.createPropertyRow("1234567a", "strength", "12"));
     }
 
     @Test
@@ -215,27 +215,6 @@ public class CSVExporterTests {
         assertEquals(element3, list.get(1));
         assertEquals(element2, list.get(2));
         assertEquals(element1, list.get(3));
-    }
-    
-    @Test
-    public void testCreateElementsFileName() {
-        assertEquals("elements.csv", exporter.createElementsFileName());
-        exporter.setFilePrefix("12345-");
-        assertEquals("12345-elements.csv", exporter.createElementsFileName());
-    }
-    
-    @Test
-    public void testCreateRelationsFileName() {
-        assertEquals("relations.csv", exporter.createRelationsFileName());
-        exporter.setFilePrefix("12345-");
-        assertEquals("12345-relations.csv", exporter.createRelationsFileName());
-    }
-
-    @Test
-    public void testCreatePropertiesFileName() {
-        assertEquals("properties.csv", exporter.createPropertiesFileName());
-        exporter.setFilePrefix("12345-");
-        assertEquals("12345-properties.csv", exporter.createPropertiesFileName());
     }
 
 }

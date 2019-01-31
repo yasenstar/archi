@@ -31,7 +31,6 @@ import com.archimatetool.csv.CSVConstants;
 import com.archimatetool.csv.CSVParseException;
 import com.archimatetool.editor.model.commands.EObjectFeatureCommand;
 import com.archimatetool.editor.model.commands.NonNotifyingCompoundCommand;
-import com.archimatetool.editor.utils.FileUtils;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.model.IAccessRelationship;
 import com.archimatetool.model.IArchimateConcept;
@@ -87,20 +86,7 @@ public class CSVImporter implements CSVConstants {
      * @param elementsFile
      */
     public void doImport(File elementsFile) throws IOException, CSVParseException {
-        // Import Elements into model
-        importElements(elementsFile);
-        
-        // Do we have a matching relations file?
-        File relationsFile = CSVImporter.getAccessoryFileFromElementsFile(elementsFile, RELATIONS_FILENAME);
-        if(relationsFile.exists() && relationsFile.isFile()) {
-            importRelations(relationsFile);
-        }
-        
-        // Do we have a matching properties file?
-        File propertiesFile = CSVImporter.getAccessoryFileFromElementsFile(elementsFile, PROPERTIES_FILENAME);
-        if(propertiesFile.exists() && propertiesFile.isFile()) {
-            importProperties(propertiesFile);
-        }
+        importFile(elementsFile);
         
         // Execute the Commands
         CommandStack stack = (CommandStack)fModel.getAdapter(CommandStack.class);
@@ -194,15 +180,13 @@ public class CSVImporter implements CSVConstants {
         return compoundCommand;
     }
     
-    // -------------------------------- Import Model and Elements --------------------------------
-    
     /**
-     * Import Elements from CSV file
+     * Import from CSV file
      * @param file The file to import
      * @throws IOException
      * @throws CSVParseException
      */
-    void importElements(File file) throws IOException, CSVParseException {
+    void importFile(File file) throws IOException, CSVParseException {
         List<CSVRecord> records = getRecords(file);
         
         // Should have at least one record
@@ -211,40 +195,49 @@ public class CSVImporter implements CSVConstants {
         }
         
         for(CSVRecord csvRecord : records) {
-            if(!isElementsRecordCorrectSize(csvRecord)) {
+            if(!isRecordCorrectSize(csvRecord)) {
                 throw new CSVParseException(Messages.CSVImporter_2);
             }
 
-            // Header
-            if(isHeaderRecord(csvRecord, MODEL_ELEMENTS_HEADER)) {
-                continue;
-            }
-
-            // Model (this is optional)
+            // Model
             if(isModelRecord(csvRecord)) {
                 parseModelRecord(csvRecord);
             }
             // Element
-            else {
+            else if(isElementRecord(csvRecord)) {
                 createElementFromRecord(csvRecord);
+            }
+            // Relationship
+            else if(isRelationshipRecord(csvRecord)) {
+                createRelationFromRecord(csvRecord);
+            }
+        }
+        
+        // Finalise Relations
+        connectRelations();
+        
+        // Now do Properties
+        for(CSVRecord csvRecord : records) {
+            // Property
+            if(isPropertyRecord(csvRecord)) {
+                createPropertyFromRecord(csvRecord);
             }
         }
     }
     
-    /**
-     * @return True if csvRecord is a model record
-     */
-    private boolean isModelRecord(CSVRecord csvRecord) {
-        return ARCHIMATE_MODEL_TYPE.equals(csvRecord.get(1));
+    private boolean isRecordCorrectSize(CSVRecord csvRecord) {
+        return csvRecord.size() == HEADER.length;
     }
-    
+
+    // -------------------------------- Import Model and Elements --------------------------------
+
     /**
      * Add a model record's information
      */
     private void parseModelRecord(CSVRecord csvRecord) {
         // If the id is set for the model we will not set the model's id to it but we will keep a reference to it
         // because the properties CSV file might use this as the reference id for adding model properties
-        String id = csvRecord.get(0);
+        String id = csvRecord.get(1);
         if(StringUtils.isSet(id)) {
             modelID = id;
         }
@@ -253,17 +246,37 @@ public class CSVImporter implements CSVConstants {
         modelPurpose = csvRecord.get(3);
     }
 
-    private boolean isElementsRecordCorrectSize(CSVRecord csvRecord) {
-        return csvRecord.size() == MODEL_ELEMENTS_HEADER.length;
+    /**
+     * @return True if csvRecord is a model record
+     */
+    private boolean isModelRecord(CSVRecord csvRecord) {
+        return ARCHIMATE_MODEL_TYPE.equals(csvRecord.get(0));
+    }
+    
+    /**
+     * @return True if csvRecord is an element record
+     */
+    private boolean isElementRecord(CSVRecord csvRecord) {
+        // Class type
+        String type = csvRecord.get(0);
+        EClass eClass = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(type);
+        return isArchimateElementEClass(eClass);
     }
 
     /**
      * Create an Archimate Element from a given CSVRecord
      */
     private void createElementFromRecord(CSVRecord csvRecord) throws CSVParseException {
+        // Class type
+        String type = csvRecord.get(0);
+        EClass eClass = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(type);
+        // Can only be Archimate element type
+        if(!isArchimateElementEClass(eClass)) {
+            throw new CSVParseException(Messages.CSVImporter_3);
+        }
+
         // ID
-        String id = csvRecord.get(0);
-        
+        String id = csvRecord.get(1);
         if(!StringUtils.isSet(id)) {
             id = generateID();
         }
@@ -271,14 +284,6 @@ public class CSVImporter implements CSVConstants {
             checkIDForInvalidCharacters(id);
         }
         
-        // Class type
-        String type = csvRecord.get(1);
-        EClass eClass = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(type);
-        // Can only be Archimate element type
-        if(!isArchimateElementEClass(eClass)) {
-            throw new CSVParseException(Messages.CSVImporter_3);
-        }
-
         String name = normalise(csvRecord.get(2));
         String documentation = csvRecord.get(3);
         
@@ -303,57 +308,18 @@ public class CSVImporter implements CSVConstants {
     // -------------------------------- Import Relations --------------------------------
     
     /**
-     * Import Relations from CSV file
-     * @param file The file to import
-     * @throws IOException
-     * @throws CSVParseException
-     */
-    void importRelations(File file) throws IOException, CSVParseException {
-        for(CSVRecord csvRecord : getRecords(file)) {
-            if(!isRelationsRecordCorrectSize(csvRecord)) {
-                throw new CSVParseException(Messages.CSVImporter_2);
-            }
-
-            // Header
-            if(isHeaderRecord(csvRecord, RELATIONSHIPS_HEADER)) {
-                continue;
-            }
-            // Relation
-            else {
-                createRelationFromRecord(csvRecord);
-            }
-        }
-        
-        // Now connect the relations
-        for(Entry<String, IArchimateConcept> entry : newConcepts.entrySet()) {
-            if(entry.getValue() instanceof IArchimateRelationship) {
-                IArchimateRelationship relation = (IArchimateRelationship)entry.getValue();
-                
-                // Get the ids from the temporary stores
-                IArchimateConcept source = findReferencedConcept((String)relation.getAdapter("sourceID")); //$NON-NLS-1$
-                IArchimateConcept target = findReferencedConcept((String)relation.getAdapter("targetID")); //$NON-NLS-1$
-                
-                // Is it a valid relationship?
-                if(!ArchimateModelUtils.isValidRelationship(source.eClass(), target.eClass(), relation.eClass())) {
-                    throw new CSVParseException(Messages.CSVImporter_5 + relation.getId());
-                }
-                
-                // Connect
-                relation.connect(source, target);
-            }
-        }
-    }
-    
-    private boolean isRelationsRecordCorrectSize(CSVRecord csvRecord) {
-        return csvRecord.size() == RELATIONSHIPS_HEADER.length;
-    }
-
-    /**
      * Create an Archimate relationship from a given CSVRecord
      */
     private void createRelationFromRecord(CSVRecord csvRecord) throws CSVParseException {
+        // Type
+        String type = csvRecord.get(0);
+        EClass eClass = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(type);
+        if(!isArchimateRelationshipEClass(eClass)) {
+            throw new CSVParseException(Messages.CSVImporter_4 + " " + type); //$NON-NLS-1$
+        }
+
         // ID
-        String id = csvRecord.get(0);
+        String id = csvRecord.get(1);
         
         if(!StringUtils.isSet(id)) {
             id = generateID();
@@ -362,13 +328,6 @@ public class CSVImporter implements CSVConstants {
             checkIDForInvalidCharacters(id);
         }
         
-        // Type
-        String type = csvRecord.get(1);
-        EClass eClass = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(type);
-        if(!isArchimateRelationshipEClass(eClass)) {
-            throw new CSVParseException(Messages.CSVImporter_4 + id);
-        }
-
         String name = normalise(csvRecord.get(2));
         String documentation = csvRecord.get(3);
         
@@ -398,41 +357,48 @@ public class CSVImporter implements CSVConstants {
         }
     }
 
-    // -------------------------------- Import Properties --------------------------------
-    
     /**
-     * Import Properties from CSV file
-     * @param file The file to import
-     * @throws IOException
-     * @throws CSVParseException
+     * Connect the relations
      */
-    void importProperties(File file) throws IOException, CSVParseException {
-        for(CSVRecord csvRecord : getRecords(file)) {
-            if(!isPropertiesRecordCorrectSize(csvRecord)) {
-                throw new CSVParseException(Messages.CSVImporter_2);
-            }
-
-            // Header
-            if(isHeaderRecord(csvRecord, PROPERTIES_HEADER)) {
-                continue;
-            }
-            // Property
-            else {
-                createPropertyFromRecord(csvRecord);
+    private void connectRelations() throws CSVParseException {
+        // Now connect the relations
+        for(Entry<String, IArchimateConcept> entry : newConcepts.entrySet()) {
+            if(entry.getValue() instanceof IArchimateRelationship) {
+                IArchimateRelationship relation = (IArchimateRelationship)entry.getValue();
+                
+                // Get the ids from the temporary stores
+                IArchimateConcept source = findReferencedConcept((String)relation.getAdapter("sourceID")); //$NON-NLS-1$
+                IArchimateConcept target = findReferencedConcept((String)relation.getAdapter("targetID")); //$NON-NLS-1$
+                
+                // Is it a valid relationship?
+                if(!ArchimateModelUtils.isValidRelationship(source.eClass(), target.eClass(), relation.eClass())) {
+                    throw new CSVParseException(Messages.CSVImporter_5 + relation.getId());
+                }
+                
+                // Connect
+                relation.connect(source, target);
             }
         }
     }
     
-    private boolean isPropertiesRecordCorrectSize(CSVRecord csvRecord) {
-        return csvRecord.size() == PROPERTIES_HEADER.length;
+    /**
+     * @return True if csvRecord is a relationship record
+     */
+    private boolean isRelationshipRecord(CSVRecord csvRecord) {
+        // Class type
+        String type = csvRecord.get(0);
+        EClass eClass = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(type);
+        return isArchimateRelationshipEClass(eClass);
     }
+
+    // -------------------------------- Import Properties --------------------------------
     
     /**
      * Create a Property from a given CSVRecord
      */
     private void createPropertyFromRecord(CSVRecord csvRecord) throws CSVParseException {
         // ID
-        String id = csvRecord.get(0);
+        String id = csvRecord.get(1);
         
         if(!StringUtils.isSet(id)) {
             throw new CSVParseException(Messages.CSVImporter_6);
@@ -462,8 +428,8 @@ public class CSVImporter implements CSVConstants {
             throw new CSVParseException(Messages.CSVImporter_7 + id);
         }
         
-        String key = normalise(csvRecord.get(1));
-        String value = normalise(csvRecord.get(2));
+        String key = normalise(csvRecord.get(4));
+        String value = normalise(csvRecord.get(5));
         
         // Handle special properties for some concepts' attributes
         if(INFLUENCE_STRENGTH.equals(key) && propertiesObject instanceof IInfluenceRelationship) {
@@ -502,6 +468,22 @@ public class CSVImporter implements CSVConstants {
         }
     }
 
+    /**
+     * @return True if csvRecord is a property record
+     */
+    private boolean isPropertyRecord(CSVRecord csvRecord) {
+        return PROPERTY_TYPE.equals(csvRecord.get(0));
+    }
+    
+    IProperty getProperty(IProperties propertiesObject, String key) {
+        for(IProperty property : propertiesObject.getProperties()) {
+            if(property.getKey().equals(key)) {
+                return property;
+            }
+        }
+        
+        return null;
+    }
     
     // -------------------------------- Helpers --------------------------------
     
@@ -563,46 +545,6 @@ public class CSVImporter implements CSVConstants {
     }
     
     /**
-     * @param file
-     * @return True if file contains the part "elements" at the end of its name
-     */
-    static boolean isElementsFileName(File file) {
-        String name = FileUtils.getFileNameWithoutExtension(file);
-        return name.endsWith(ELEMENTS_FILENAME);
-    }
-    
-    /**
-     * @param file
-     * @return True if file contains the part "relations" at the end of its name
-     */
-    static boolean isRelationsFileName(File file) {
-        String name = FileUtils.getFileNameWithoutExtension(file);
-        return name.endsWith(RELATIONS_FILENAME);
-    }
-
-    /**
-     * @param file
-     * @return True if file contains the part "properties" at the end of its name
-     */
-    static boolean isPropertiesFileName(File file) {
-        String name = FileUtils.getFileNameWithoutExtension(file);
-        return name.endsWith(PROPERTIES_FILENAME);
-    }
-    
-    /**
-     * @param file
-     * @param one of RELATIONS_FILENAME or PROPERTIES_FILENAME
-     * @return A matching acessory file name given the elements file name
-     *         For example, given file "prefix-elements.csv" and matching on RELATIONS_FILENAME will return "prefix-relations.csv"
-     */
-    static File getAccessoryFileFromElementsFile(File file, String targetFilename) {
-        String name = file.getPath();
-        int index = name.lastIndexOf(ELEMENTS_FILENAME);
-        name = new StringBuilder(name).replace(index, index + ELEMENTS_FILENAME.length(), targetFilename).toString();
-        return new File(name);
-    }
-
-    /**
      * Return a normalised String.
      * Fields such as Name and Properties should not have these characters.
      * A Null string is returned as an empty string
@@ -617,26 +559,6 @@ public class CSVImporter implements CSVConstants {
         s = s.replaceAll("(\r\n|\r|\n|\t)", " ");  //$NON-NLS-1$//$NON-NLS-2$
         
         return s;
-    }
-    
-    /**
-     * @param csvRecord
-     * @param fields
-     * @return True if csvRecord matches a header with given fields
-     */
-    private boolean isHeaderRecord(CSVRecord csvRecord, String[] fields) {
-        if(csvRecord.getRecordNumber() != 1 && csvRecord.size() != fields.length) {
-            return false;
-        }
-        
-        for(int i = 0; i < fields.length; i++) {
-            String field = fields[i];
-            if(!field.equalsIgnoreCase(csvRecord.get(i))) {
-                return false;
-            }
-        }
-        
-        return true;
     }
     
     String generateID() {
@@ -713,26 +635,6 @@ public class CSVImporter implements CSVConstants {
     
     boolean isArchimateRelationshipEClass(EClass eClass) {
         return eClass != null && IArchimatePackage.eINSTANCE.getArchimateRelationship().isSuperTypeOf(eClass);
-    }
-    
-    boolean hasProperty(IProperties propertiesObject, String key, String value) {
-        for(IProperty property : propertiesObject.getProperties()) {
-            if(property.getKey().equals(key) && property.getValue().equals(value)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    IProperty getProperty(IProperties propertiesObject, String key) {
-        for(IProperty property : propertiesObject.getProperties()) {
-            if(property.getKey().equals(key)) {
-                return property;
-            }
-        }
-        
-        return null;
     }
     
     void storeUpdatedConceptFeature(IArchimateConcept concept, EAttribute feature, Object value) {

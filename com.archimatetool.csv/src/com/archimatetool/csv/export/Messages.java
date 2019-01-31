@@ -12,11 +12,7 @@ public class Messages extends NLS {
 
     public static String ExportAsCSVPage_1;
 
-    public static String ExportAsCSVPage_10;
-
     public static String ExportAsCSVPage_11;
-
-    public static String ExportAsCSVPage_12;
 
     public static String ExportAsCSVPage_13;
 

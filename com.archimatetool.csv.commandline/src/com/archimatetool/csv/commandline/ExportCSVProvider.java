@@ -26,7 +26,7 @@ import com.archimatetool.model.IArchimateModel;
  * 
  * Archi -consoleLog -nosplash -application com.archimatetool.commandline.app
    --loadModel "/pathToModel/model.archimate"
-   --exportToCSV "/pathToOutputFolder"
+   --csv.export "/path/file.csv"
  * 
  * @author Phillip Beauvoir
  */
@@ -36,7 +36,6 @@ public class ExportCSVProvider extends AbstractCommandLineProvider {
     
     static final String OPTION_EXPORT_CSV = "csv.export"; //$NON-NLS-1$
     static final String OPTION_DELIMITER = "csv.exportDelimiter"; //$NON-NLS-1$
-    static final String OPTION_FILE_PREFIX = "csv.exportFilenamePrefix"; //$NON-NLS-1$
     static final String OPTION_STRIP_NEW_LINES = "csv.exportStripNewLines"; //$NON-NLS-1$
     static final String OPTION_LEADING_CHARS_HACK = "csv.exportLeadingZeros"; //$NON-NLS-1$
     static final String OPTION_ENCODING = "csv.exportEncoding"; //$NON-NLS-1$
@@ -58,19 +57,14 @@ public class ExportCSVProvider extends AbstractCommandLineProvider {
             throw new IOException(Messages.ExportCSVProvider_1);
         }
         
-        // Folder
+        // File
         String value = commandLine.getOptionValue(OPTION_EXPORT_CSV);
         if(!StringUtils.isSet(value)) {
             logError(Messages.ExportCSVProvider_2);
             return;
         }
 
-        File folderOutput = new File(value);
-        folderOutput.mkdirs();
-        if(!folderOutput.exists()) {
-            logError(NLS.bind(Messages.ExportCSVProvider_3, value));
-            return;
-        }
+        File fileOutput = new File(value);
         
         CSVExporter exporter = new CSVExporter(model);
 
@@ -92,12 +86,6 @@ public class ExportCSVProvider extends AbstractCommandLineProvider {
             }
         }
         
-        // File prefix
-        value = commandLine.getOptionValue(OPTION_FILE_PREFIX);
-        if(StringUtils.isSet(value)) {
-            exporter.setFilePrefix(value);
-        }
-        
         // Encoding
         value = commandLine.getOptionValue(OPTION_ENCODING);
         if(StringUtils.isSet(value)) {
@@ -110,8 +98,8 @@ public class ExportCSVProvider extends AbstractCommandLineProvider {
         // Strip newlines
         exporter.setStripNewLines(commandLine.hasOption(OPTION_STRIP_NEW_LINES));
 
-        logMessage(NLS.bind(Messages.ExportCSVProvider_4, model.getName(), folderOutput.getPath()));
-        exporter.export(folderOutput);
+        logMessage(NLS.bind(Messages.ExportCSVProvider_4, model.getName(), fileOutput.getPath()));
+        exporter.export(fileOutput);
         logMessage(Messages.ExportCSVProvider_5);
     }
     
@@ -144,14 +132,6 @@ public class ExportCSVProvider extends AbstractCommandLineProvider {
                 .hasArg()
                 .argName(Messages.ExportCSVProvider_10)
                 .desc(Messages.ExportCSVProvider_11)
-                .build();
-        options.addOption(option);
-
-        option = Option.builder()
-                .longOpt(OPTION_FILE_PREFIX)
-                .hasArg()
-                .argName(Messages.ExportCSVProvider_12)
-                .desc(Messages.ExportCSVProvider_13)
                 .build();
         options.addOption(option);
 

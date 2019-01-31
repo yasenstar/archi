@@ -29,20 +29,15 @@ public class CSVImportProvider implements ISelectedModelImporter, CSVConstants {
     
     @Override
     public void doImport(IArchimateModel model) throws IOException {
-        File elementsFile = askOpenFile();
-        if(elementsFile == null) {
+        File file = askOpenFile();
+        if(file == null) {
             return;
-        }
-        
-        // Check file is valid
-        if(!CSVImporter.isElementsFileName(elementsFile)) {
-            throw new IOException(Messages.CSVImportProvider_0);
         }
         
         // Import
         try {
             CSVImporter importer =  new CSVImporter(model);
-            importer.doImport(elementsFile);
+            importer.doImport(file);
         }
         catch(CSVParseException ex) {
             throw new IOException(ex.getMessage());

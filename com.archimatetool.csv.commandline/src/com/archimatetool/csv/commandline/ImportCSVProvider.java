@@ -26,7 +26,7 @@ import com.archimatetool.model.IArchimateModel;
  * 
  * Archi -consoleLog -nosplash -application com.archimatetool.commandline.app
    --createEmptyModel
-   --importFromCSV "/elements.csv"
+   --csv.import "/elements.csv"
  * 
  * @author Phillip Beauvoir
  */
@@ -58,16 +58,16 @@ public class ImportCSVProvider extends AbstractCommandLineProvider {
             logError(Messages.ImportCSVProvider_2);
             return;
         }
-        File elementsFile = new File(value);
-        if(!elementsFile.exists()) {
+        File file = new File(value);
+        if(!file.exists()) {
             logError(NLS.bind(Messages.ImportCSVProvider_3, value));
             return;
         }
         
-        logMessage(NLS.bind(Messages.ImportCSVProvider_4, elementsFile.getPath(), model.getName()));
+        logMessage(NLS.bind(Messages.ImportCSVProvider_4, file.getPath(), model.getName()));
         
         CSVImporter importer = new CSVImporter(model);
-        importer.doImport(elementsFile);
+        importer.doImport(file);
 
         logMessage(Messages.ImportCSVProvider_5);
     }

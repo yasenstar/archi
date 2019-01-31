@@ -24,8 +24,6 @@ public class Messages extends NLS {
 
     public static String ExportCSVProvider_2;
 
-    public static String ExportCSVProvider_3;
-
     public static String ExportCSVProvider_4;
 
     public static String ExportCSVProvider_5;

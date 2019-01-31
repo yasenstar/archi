@@ -1,0 +1,23 @@
+"Type","ID","Name","Documentation","Source/Key","Target/Value"
+"ArchimateModel","862677a6","Test Model changed","Model Documentation Changed","",""
+"BusinessActor","f00aa5b4","Name changed","This is the Business Actor
+Documentation
+Here """"
+","",""
+"BusinessInterface","d9fe8c17","Business Interface","","",""
+"BusinessRole","f6a18059","Business Role","Some more docs
+Here
+","",""
+"AssignmentRelationship","cdbfc933","Assignment relation changed","Assignment documentation changed","f00aa5b4","f6a18059"
+"CompositionRelationship","5854f8a3","Compo","Here it is
+again
+
+
+","f00aa5b4","d9fe8c17"
+"Property","862677a6","","","Property 1","Hello World ""Here""!"
+"Property","862677a6","","","Property 2","Again"
+"Property","f00aa5b4","","","Property 1","A new value"
+"Property","f00aa5b4","","","Property 2","Another one ""here"""
+"Property","f00aa5b4","","","Property 3","Changed this one"
+"Property","f00aa5b4","","","Property 3","Again"
+"Property","5854f8a3","","","This","value changes"

@@ -43,14 +43,11 @@ public class ExportAsCSVWizard extends Wizard implements CSVConstants {
 
     @Override
     public boolean performFinish() {
-        String folderPath = fPage.getExportFolderPath();
+        String path = fPage.getExportFilePath();
         
-        if(folderPath == null) {
+        if(path == null) {
             return false;
         }
-        
-        // Set file prefix
-        fExporter.setFilePrefix(fPage.getFilenamePrefix());
         
         // Set delimiter
         fExporter.setDelimiter(DELIMITERS[fPage.getDelimiterIndex()]);
@@ -64,14 +61,13 @@ public class ExportAsCSVWizard extends Wizard implements CSVConstants {
         // Encoding
         fExporter.setEncoding(fPage.getEncoding());
         
-        File folder = new File(folderPath);
+        // Header
+        fExporter.setWriteHeader(fPage.getWriteHeader());
         
-        // Make folder
-        folder.mkdirs();
+        File file = new File(path);
         
-        // Make sure the elements file does not already exist
-        File elementsFile = new File(folder, fExporter.createElementsFileName());
-        if(elementsFile.exists()) {
+        // Make sure the file does not already exist
+        if(file.exists()) {
             boolean result = MessageDialog.openQuestion(Display.getCurrent().getActiveShell(),
                     Messages.ExportAsCSVWizard_1,
                     Messages.ExportAsCSVWizard_2);
@@ -85,7 +81,7 @@ public class ExportAsCSVWizard extends Wizard implements CSVConstants {
         
         // Export
         try {
-            fExporter.export(folder);
+            fExporter.export(file);
         }
         catch(IOException ex) {
             ex.printStackTrace();

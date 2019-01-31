@@ -1,0 +1,8 @@
+"Type","ID","Name","Documentation","Source/Key","Target/Value"
+"ArchimateModel","","Test Model","Model Documentation","",""
+"BusinessActor","","Name","","",""
+"BusinessInterface","","Business Interface","","",""
+"BusinessRole","","Business Role","Some more docs","",""
+"BusinessActor","id1","Another Business Actor","This has an Identifier","",""
+"BusinessRole","id2","Another Business Role","This has an Identifier","",""
+"AssignmentRelationship","","Assignment relation","No ID!","id1","id2"
