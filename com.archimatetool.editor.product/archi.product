@@ -48,6 +48,7 @@
       <feature id="org.eclipse.equinox.core.feature"/>
       <feature id="org.eclipse.equinox.p2.extras.feature"/>
       <feature id="org.eclipse.ecf.filetransfer.httpclient45.feature"/>
+      <feature id="com.make.chromium.cef.feature" installMode="root"/>
    </features>
 
    <configurations>
