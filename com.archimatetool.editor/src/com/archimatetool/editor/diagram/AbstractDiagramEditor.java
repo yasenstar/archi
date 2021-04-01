@@ -32,6 +32,8 @@ import org.eclipse.gef.MouseWheelHandler;
 import org.eclipse.gef.MouseWheelZoomHandler;
 import org.eclipse.gef.SnapToGeometry;
 import org.eclipse.gef.SnapToGrid;
+import org.eclipse.gef.archi.ui.actions.RedoAction;
+import org.eclipse.gef.archi.ui.actions.UndoAction;
 import org.eclipse.gef.commands.CommandStack;
 import org.eclipse.gef.dnd.TemplateTransferDragSourceListener;
 import org.eclipse.gef.editparts.ZoomManager;
@@ -944,6 +946,27 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         action = new SelectElementInTreeAction(this);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
+        
+        // Hack here for resource leak on Windows
+        // See https://github.com/archimatetool/archi/issues/717
+        // See https://bugs.eclipse.org/bugs/show_bug.cgi?id=572488
+        if(PlatformUtils.isWindows()) { // Only on Windows
+            // Remove GEF's actions...
+            IAction undoAction = registry.getAction(ActionFactory.UNDO.getId());
+            registry.removeAction(undoAction);
+
+            IAction redoAction = registry.getAction(ActionFactory.REDO.getId());
+            registry.removeAction(redoAction);
+            
+            // And add our hacked versions...
+            undoAction = new UndoAction(this);
+            registry.registerAction(undoAction);
+            getStackActions().add(undoAction.getId());
+
+            redoAction = new RedoAction(this);
+            registry.registerAction(redoAction);
+            getStackActions().add(redoAction.getId());
+        }
     }
     
     /**

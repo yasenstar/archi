@@ -15,9 +15,9 @@ import java.util.Set;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.gef.archi.ui.actions.RedoAction;
+import org.eclipse.gef.archi.ui.actions.UndoAction;
 import org.eclipse.gef.commands.CommandStack;
-import org.eclipse.gef.ui.actions.RedoAction;
-import org.eclipse.gef.ui.actions.UndoAction;
 import org.eclipse.help.IContextProvider;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
@@ -70,6 +70,9 @@ implements IContextProvider, PropertyChangeListener, ITabbedPropertySheetPageCon
      */
     private static final CommandStack EMPTY_COMMANDSTACK = new CommandStack();
 
+    // These are our versions of these Actions
+    // See https://github.com/archimatetool/archi/issues/717
+    // See https://bugs.eclipse.org/bugs/show_bug.cgi?id=572488
     protected UndoAction fActionUndo = new UndoAction(this);
     protected RedoAction fActionRedo = new RedoAction(this);
     
