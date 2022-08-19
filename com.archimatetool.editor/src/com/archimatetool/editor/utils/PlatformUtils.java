@@ -15,6 +15,7 @@ import org.eclipse.core.runtime.Platform;
  * 
  * @author Phillip Beauvoir
  */
+@SuppressWarnings("nls")
 public class PlatformUtils {
     
     /**
@@ -46,17 +47,45 @@ public class PlatformUtils {
     }
 
     /**
-     * @return True if we're running on a 64-bit platform
+     * @return True if we're running on a x86 64bit-based architecture.
      */
-    public static boolean is64Bit() {
+    public static boolean isX86_64() {
         return Platform.getOSArch().equals(Platform.ARCH_X86_64);
+    }
+    
+    /**
+     * @return True if we're running on a AARCH64 bit-based architecture.
+     */
+    public static boolean isAarch64() {
+        return Platform.getOSArch().equals(Platform.ARCH_AARCH64);
+    }
+    
+    /**
+     * @return True if we're running on Apple Silicon
+     */
+    public static boolean isAppleSilicon() {
+        return isMac() && isAarch64();
+    }
+    
+    /**
+     * @return True if we're running on Linux Wayland graphics
+     */
+    public static boolean isLinuxWayland() {
+        return isLinux() && "wayland".equalsIgnoreCase(System.getenv("XDG_SESSION_TYPE"));
+    }
+
+    /**
+     * @return True if we're running on Linux X11 graphics
+     */
+    public static boolean isLinuxX11() {
+        return isLinux() && "x11".equalsIgnoreCase(System.getenv("XDG_SESSION_TYPE"));
     }
 
     /**
      * @return true if The OS version number matches version
      */
     public static boolean isOSVersion(String version) {
-        return System.getProperty("os.version").equals(version); //$NON-NLS-1$
+        return System.getProperty("os.version").equals(version);
     }
 
     /**
@@ -68,7 +97,7 @@ public class PlatformUtils {
      *          1 if newer > older
      */
     public static int compareOSVersion(String version) {
-        String current = System.getProperty("os.version"); //$NON-NLS-1$
+        String current = System.getProperty("os.version");
         return StringUtils.compareVersionNumbers(current, version);
     }
 
@@ -78,20 +107,20 @@ public class PlatformUtils {
     public static File getApplicationDataFolder() {
         // Windows
         if(isWindows()) {
-            return new File(System.getenv("APPDATA")); //$NON-NLS-1$
+            return new File(System.getenv("APPDATA"));
         }
         
         // Linux
         if(isLinux()) {
-            return new File(System.getProperty("user.home")); //$NON-NLS-1$
+            return new File(System.getProperty("user.home"));
         }
         
         // Mac
         if(isMac()) {
-            return new File(System.getProperty("user.home"), "Library/Application Support"); //$NON-NLS-1$ //$NON-NLS-2$
+            return new File(System.getProperty("user.home"), "Library/Application Support");
         }
 
         // Default
-        return new File(System.getProperty("user.home")); //$NON-NLS-1$
+        return new File(System.getProperty("user.home"));
     }
 }

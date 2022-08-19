@@ -102,6 +102,12 @@ public class GroupFigure extends AbstractTextControlContainerFigure {
             
             disposeGradientPattern(graphics, gradient);
             
+            // Icon
+            if(getIconicDelegate() != null) {
+                getIconicDelegate().setTopOffset(tabHeight);
+                drawIconImage(graphics, bounds);
+            }
+
             // Line
             graphics.setForegroundColor(getLineColor());
             graphics.setAlpha(getLineAlpha());
@@ -124,6 +130,12 @@ public class GroupFigure extends AbstractTextControlContainerFigure {
             
             disposeGradientPattern(graphics, gradient);
             
+            // Icon
+            if(getIconicDelegate() != null) {
+                getIconicDelegate().setTopOffset(0);
+                drawIconImage(graphics, bounds);
+            }
+
             // Line
             graphics.setForegroundColor(getLineColor());
             graphics.setAlpha(getLineAlpha());
@@ -139,6 +151,7 @@ public class GroupFigure extends AbstractTextControlContainerFigure {
         
         int textPosition = ((ITextPosition)getDiagramModelObject()).getTextPosition();
         if(textPosition == ITextPosition.TEXT_POSITION_TOP) {
+            bounds.y += 5 - getTextControlMarginHeight();
             bounds.y -= Math.max(3, FigureUtilities.getFontMetrics(getFont()).getLeading());
         }
         

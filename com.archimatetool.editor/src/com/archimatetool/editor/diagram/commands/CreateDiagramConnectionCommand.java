@@ -6,9 +6,12 @@
 package com.archimatetool.editor.diagram.commands;
 
 import org.eclipse.draw2d.geometry.Dimension;
+import org.eclipse.gef.EditPart;
+import org.eclipse.gef.EditPartViewer;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.gef.requests.CreateConnectionRequest;
+import org.eclipse.swt.widgets.Display;
 
 import com.archimatetool.model.IConnectable;
 import com.archimatetool.model.IDiagramModelConnection;
@@ -84,8 +87,13 @@ extends Command {
         // If it's a circular connection, add some bendpoints
         if(fConnection.getSource() == fConnection.getTarget()) {
             Command cmd = createBendPointsForCircularConnectionCommand(fConnection);
-            cmd.execute();
+            if(cmd != null) {
+                cmd.execute();
+            }
         }
+        
+        // Select connection edit part
+        selectConnection();
     }
 
     @Override
@@ -104,6 +112,22 @@ extends Command {
      */
     protected IDiagramModelConnection createNewConnection() {
         return (IDiagramModelConnection)fRequest.getNewObject();
+    }
+    
+    /**
+     * Select the connection
+     */
+    protected void selectConnection() {
+        if(fRequest.getSourceEditPart() != null && fRequest.getSourceEditPart().getViewer() != null) {
+            EditPartViewer viewer = fRequest.getSourceEditPart().getViewer();
+            EditPart editPart = (EditPart)viewer.getEditPartRegistry().get(fConnection);
+            if(editPart != null) {
+                // Async this so that the Properties view can catch up
+                Display.getCurrent().asyncExec(() -> {
+                    viewer.select(editPart);
+                });
+            }
+        }
     }
     
     /**

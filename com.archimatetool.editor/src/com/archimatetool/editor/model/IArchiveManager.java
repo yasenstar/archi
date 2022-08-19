@@ -7,14 +7,17 @@ package com.archimatetool.editor.model;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipFile;
 
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
 
 import com.archimatetool.editor.model.impl.ArchiveManager;
 import com.archimatetool.model.IArchimateModel;
+import com.archimatetool.model.util.ArchimateResourceFactory;
 
 
 /**
@@ -63,6 +66,18 @@ public interface IArchiveManager {
         }
         
         /**
+         * Create Resource from model file.
+         * The Resource will be different if the file is an archive file.
+         * @param file The model file
+         * @return A new Redource
+         */
+        public static Resource createResource(File file) {
+            return ArchimateResourceFactory.createNewResource(isArchiveFile(file) ?
+                                               createArchiveModelURI(file) :
+                                               URI.createFileURI(file.getAbsolutePath()));
+        }
+        
+        /**
          * Create a URI for the model xml file in the archive file
          * 
          * @param file The archimate archive file
@@ -79,7 +94,7 @@ public interface IArchiveManager {
          * @return The path
          */
         public static String getArchiveFilePath(File file) {
-            String path = file.getPath();
+            String path = file.getAbsolutePath();
             // org.eclipse.emf.common.util.URI treats the # character as a separator
             path = path.replace("#", "%23");  //$NON-NLS-1$//$NON-NLS-2$
             return "archive:file:///" + path; //$NON-NLS-1$
@@ -138,19 +153,26 @@ public interface IArchiveManager {
      * @throws Exception
      */
     Image createImage(String imagePath) throws Exception;
+    
+    /**
+     * Create a new ImageData for this path entry
+     * @param imagePath The image imagePath
+     * @return The ImageData or null
+     */
+    ImageData createImageData(String imagePath);
 
     /**
-     * Get a live list of Image entry paths as used in the current state of the model.<p>
+     * Get a copy of the list of Image entry paths as used in the model.<p>
      * This will not include duplicates. The list is re-calculated each time.
      * 
      * @return A list of image path entries as used in the current state of the model
      */
-    List<String> getImagePaths();
+    Set<String> getImagePaths();
     
     /**
      * @return A copy of the list of image path entries for loaded image data. These may or may not be referenced in the model.
      */
-    List<String> getLoadedImagePaths();
+    Set<String> getLoadedImagePaths();
 
     /**
      * Save the Model and any images to an archive file
@@ -182,7 +204,7 @@ public interface IArchiveManager {
     boolean loadImagesFromModelFile(File file) throws IOException;
     
     /**
-     * @return True if the model currently has references to images
+     * @return True if the model currently has references to at least one image and the image is loaded
      */
     boolean hasImages();
     

@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.Resource.Diagnostic;
 import org.eclipse.gef.commands.CommandStack;
@@ -36,6 +35,7 @@ import org.jdom2.JDOMException;
 
 import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.Logger;
+import com.archimatetool.editor.diagram.util.AnimationUtil;
 import com.archimatetool.editor.model.IArchiveManager;
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.model.ModelChecker;
@@ -43,7 +43,6 @@ import com.archimatetool.editor.model.compatibility.CompatibilityHandlerExceptio
 import com.archimatetool.editor.model.compatibility.IncompatibleModelException;
 import com.archimatetool.editor.model.compatibility.ModelCompatibility;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.services.EditorManager;
 import com.archimatetool.editor.utils.FileUtils;
 import com.archimatetool.jdom.JDOMUtils;
@@ -52,7 +51,6 @@ import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.model.ModelVersion;
-import com.archimatetool.model.util.ArchimateResourceFactory;
 import com.archimatetool.model.util.IModelContentListener;
 
 
@@ -205,7 +203,7 @@ implements IEditorModelManager {
         
         if(model != null) {
             // Open Views of newly opened model if set in Preferences up to a maximum for safety
-            if(Preferences.doOpenDiagramsOnLoad()) {
+            if(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.OPEN_DIAGRAMS_ON_LOAD)) {
                 int max = 0;
                 for(IDiagramModel dm : model.getDiagramModels()) {
                     if(max++ < 30) {
@@ -253,13 +251,8 @@ implements IEditorModelManager {
             return model;
         }
         
-        // Ascertain if this is an archive file
-        boolean useArchiveFormat = IArchiveManager.FACTORY.isArchiveFile(file);
-        
         // Create the Resource
-        Resource resource = ArchimateResourceFactory.createNewResource(useArchiveFormat ?
-                                                       IArchiveManager.FACTORY.createArchiveModelURI(file) :
-                                                       URI.createFileURI(file.getAbsolutePath()));
+        Resource resource = IArchiveManager.FACTORY.createResource(file);
 
         // Check model compatibility
         ModelCompatibility modelCompatibility = new ModelCompatibility(resource);
@@ -332,9 +325,13 @@ implements IEditorModelManager {
         catch(CompatibilityHandlerException ex) {
         }
 
+        // Set file
         model.setFile(file);
+        
+        // Check defaults
         model.setDefaults();
         
+        // Add to list of open models
         getModels().add(model);
         
         // Register Ecore listener
@@ -356,13 +353,71 @@ implements IEditorModelManager {
     }
     
     @Override
+    public IArchimateModel load(File file) throws IOException {
+        if(file == null || !file.exists()) {
+            return null;
+        }
+        
+        // Create the Resource
+        Resource resource = IArchiveManager.FACTORY.createResource(file);
+
+        // Check model compatibility
+        ModelCompatibility modelCompatibility = new ModelCompatibility(resource);
+        
+        // Load the model file
+        try {
+            resource.load(null);
+        }
+        catch(IOException ex) {
+            // Error occured loading model. 
+            try {
+                modelCompatibility.checkErrors();
+            }
+            catch(IncompatibleModelException ex1) {
+                throw new IOException(NLS.bind(Messages.EditorModelManager_10, file) + "\n" + ex1.getMessage()); //$NON-NLS-1$
+            }
+        }
+        
+        IArchimateModel model = (IArchimateModel)resource.getContents().get(0);
+
+        // And then fix any backward compatibility issues
+        try {
+            modelCompatibility.fixCompatibility();
+        }
+        catch(CompatibilityHandlerException ex) {
+        }
+
+        // Set file
+        model.setFile(file);
+        
+        // Check defaults
+        model.setDefaults();
+        
+        // New Command Stack
+        CommandStack cmdStack = new CommandStack();
+        model.setAdapter(CommandStack.class, cmdStack);
+        
+        // New Archive Manager and load images
+        IArchiveManager archiveManager = IArchiveManager.FACTORY.createArchiveManager(model);
+        model.setAdapter(IArchiveManager.class, archiveManager);
+        archiveManager.loadImages();
+        
+        return model;
+    }
+    
+    @Override
     public boolean closeModel(IArchimateModel model) throws IOException {
+        return closeModel(model, true);
+    }
+    
+    @Override
+    public boolean closeModel(IArchimateModel model, boolean askSaveModel) throws IOException {
         if(model == null) {
             return true;
         }
         
         // Check if model needs saving
-        if(PlatformUI.isWorkbenchRunning() && isModelDirty(model)) {
+        if(PlatformUI.isWorkbenchRunning() && isModelDirty(model) && askSaveModel) {
             boolean result = askSaveModel(model);
             if(!result) {
                 return false;
@@ -447,7 +502,7 @@ implements IEditorModelManager {
         File file = model.getFile();
         
         // Save backup (if set in Preferences)
-        if(Preferences.STORE.getBoolean(IPreferenceConstants.BACKUP_ON_SAVE) && file.exists()) {
+        if(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.BACKUP_ON_SAVE) && file.exists()) {
             FileUtils.copyFile(file, new File(model.getFile().getAbsolutePath() + ".bak"), false); //$NON-NLS-1$
         }
         
@@ -530,6 +585,10 @@ implements IEditorModelManager {
         
         FileDialog dialog = new FileDialog(shell, SWT.SAVE);
         dialog.setFilterExtensions(new String[] { ARCHIMATE_FILE_WILDCARD, "*.*" } ); //$NON-NLS-1$
+        
+        // Set to true for consistency on all OSs
+        dialog.setOverwrite(true);
+        
         String path = dialog.open();
         if(path == null) {
             return null;
@@ -548,16 +607,6 @@ implements IEditorModelManager {
                 MessageDialog.openWarning(shell,
                         Messages.EditorModelManager_8,
                         NLS.bind(Messages.EditorModelManager_9, file));
-                return null;
-            }
-        }
-        
-        // Make sure the file does not already exist
-        if(file.exists()) {
-            boolean result = MessageDialog.openQuestion(shell,
-                    Messages.EditorModelManager_10,
-                    NLS.bind(Messages.EditorModelManager_11, file));
-            if(!result) {
                 return null;
             }
         }
@@ -583,6 +632,9 @@ implements IEditorModelManager {
                     }
                 }
             });
+            
+            // Animate Commands
+            AnimationUtil.registerCommandStack(cmdStack);
         }
         
         model.setAdapter(CommandStack.class, cmdStack);

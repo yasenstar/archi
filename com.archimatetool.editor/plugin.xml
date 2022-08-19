@@ -7,6 +7,7 @@
    <extension-point id="diagramEditorFactory" name="Diagram Editor Factory" schema="schema/diagramEditorFactory.exsd"/>
    <extension-point id="compatibilityHandler" name="Model Compatibility Handler" schema="schema/compatibilityHandler.exsd"/>
    <extension-point id="imageExportProvider" name="Image Export Provider" schema="schema/imageExportProvider.exsd"/>
+   <extension-point id="labelProvider" name="Label Provider" schema="schema/labelProvider.exsd"/>
    <extension
          id="app"
          name="Archi"
@@ -229,6 +230,12 @@
                category="appearance.category"
                id="figure.tab"
                label="%propertyTab.label.3">
+         </propertyTab>
+         <propertyTab
+               afterTab="appearance.tab"
+               category="appearance.category"
+               id="image.tab"
+               label="%propertyTab.label.5">
          </propertyTab>
       </propertyTabs>
    </extension>
@@ -457,6 +464,37 @@
                filter="com.archimatetool.editor.propertysections.LabelRendererSection$Filter"
                id="labelRendererSection"
                tab="label.tab">
+         </propertySection>
+         <propertySection
+               class="com.archimatetool.editor.propertysections.JunctionConnectionArrowsSection"
+               filter="com.archimatetool.editor.propertysections.JunctionConnectionArrowsSection$Filter"
+               id="junctionArrowsSection"
+               tab="appearance.tab">
+         </propertySection>
+         <propertySection
+               class="com.archimatetool.editor.propertysections.IconSection"
+               filter="com.archimatetool.editor.propertysections.IconSection$Filter"
+               id="iconSection"
+               tab="image.tab">
+         </propertySection>
+         <propertySection
+               class="com.archimatetool.editor.propertysections.IconVisibleSection"
+               filter="com.archimatetool.editor.propertysections.IconVisibleSection$Filter"
+               id="iconVisibleSection"
+               tab="image.tab">
+         </propertySection>
+         <propertySection
+               afterSection="iconVisibleSection"
+               class="com.archimatetool.editor.propertysections.ImageSourceSection"
+               filter="com.archimatetool.editor.propertysections.ImageSourceSection$Filter"
+               id="imageSourceSection"
+               tab="image.tab">
+         </propertySection>
+         <propertySection
+               class="com.archimatetool.editor.propertysections.SpecializationSection"
+               filter="com.archimatetool.editor.propertysections.SpecializationSection$Filter"
+               id="specializationSection"
+               tab="main.tab">
          </propertySection>
       </propertySections>
    </extension>
@@ -702,9 +740,12 @@
             name="%command.name.16">
       </command>
       <command
-            defaultHandler="com.archimatetool.editor.actions.ShowPropertiesManagerHandler"
             id="com.archimatetool.editor.action.openPropertiesDialog"
             name="%command.name.17">
+      </command>
+      <command
+            id="com.archimatetool.editor.action.openProfilesDialog"
+            name="%command.name.18">
       </command>
    </extension>
    <extension
@@ -836,12 +877,26 @@
       <menuContribution
             allPopups="false"
             locationURI="menu:tools?after=com.archimatetool.action.generateView">
+         <separator
+               name="com.archimatetool.menu.separatorTools1"
+               visible="true">
+         </separator>
          <command
                commandId="com.archimatetool.editor.action.openPropertiesDialog"
                icon="img/prop_ps.png"
                label="%command.label.5"
                style="push">
          </command>
+         <command
+               commandId="com.archimatetool.editor.action.openProfilesDialog"
+               icon="img/specialization.png"
+               label="%command.label.6"
+               style="push">
+         </command>
+         <separator
+               name="com.archimatetool.menu.separatorTools2"
+               visible="true">
+         </separator>
       </menuContribution>
    </extension>
    <extension
@@ -903,11 +958,9 @@
             id="com.archimatetool.editor.intro.config"
             introId="com.archimatetool.editor.intro">
          <presentation
-               home-page-id="root"
-               standby-page-id="standby">
+               home-page-id="root">
             <implementation
-                  kind="html"
-                  style="style.css">
+                  kind="html">
             </implementation>
          </presentation>
       </config>
@@ -1270,6 +1323,38 @@
             productId="com.archimatetool.editor.product"
             splashId="com.archimatetool.editor.splashHandler">
       </splashHandlerProductBinding>
+   </extension>
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="com.archimatetool.editor.actions.ShowPropertiesManagerHandler"
+            commandId="com.archimatetool.editor.action.openPropertiesDialog">
+         <enabledWhen>
+            <reference
+                  definitionId="com.archimatetool.modelEnabled">
+            </reference></enabledWhen>
+      </handler>
+      <handler
+            class="com.archimatetool.editor.actions.ShowProfilesManagerHandler"
+            commandId="com.archimatetool.editor.action.openProfilesDialog">
+         <enabledWhen>
+            <reference
+                  definitionId="com.archimatetool.modelEnabled">
+            </reference>
+         </enabledWhen>
+      </handler>
+   </extension>
+   <extension
+         point="org.eclipse.core.expressions.definitions">
+      <definition
+            id="com.archimatetool.modelEnabled">
+         <with
+               variable="activePart">
+            <adapt
+                  type="com.archimatetool.model.IArchimateModel">
+            </adapt>
+         </with>
+      </definition>
    </extension>
 
 </plugin>

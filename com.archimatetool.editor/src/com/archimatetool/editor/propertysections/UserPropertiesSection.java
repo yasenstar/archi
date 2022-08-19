@@ -224,13 +224,14 @@ public class UserPropertiesSection extends AbstractECorePropertySection {
         Composite tableComp = createTableComposite(parent, SWT.NULL);
         TableColumnLayout tableLayout = (TableColumnLayout)tableComp.getLayout();
         
-        parent.setBackgroundMode(SWT.INHERIT_DEFAULT);
-        
         // Table Viewer
         fTableViewer = new TableViewer(tableComp, SWT.MULTI | SWT.BORDER | SWT.FULL_SELECTION);
 
         // Font
         UIUtils.setFontFromPreferences(fTableViewer.getTable(), IPreferenceConstants.PROPERTIES_TABLE_FONT, true);
+        
+        // Mac Silicon Item height
+        UIUtils.fixMacSiliconItemHeight(fTableViewer.getTable());
         
         // Edit cell on double-click and add Tab key traversal
         TableViewerEditor.create(fTableViewer, new ColumnViewerEditorActivationStrategy(fTableViewer) {
@@ -258,6 +259,7 @@ public class UserPropertiesSection extends AbstractECorePropertySection {
         // Columns
         TableViewerColumn columnBlank = new TableViewerColumn(fTableViewer, SWT.NONE, 0);
         tableLayout.setColumnData(columnBlank.getColumn(), new ColumnWeightData(3, false));
+        columnBlank.getColumn().setWidth(38);
 
         TableViewerColumn columnKey = new TableViewerColumn(fTableViewer, SWT.NONE, 1);
         columnKey.getColumn().setText(Messages.UserPropertiesSection_0);
@@ -301,6 +303,7 @@ public class UserPropertiesSection extends AbstractECorePropertySection {
 
         // Toolbar
         ToolBar toolBar = new ToolBar(parent, SWT.FLAT | SWT.VERTICAL);
+        getWidgetFactory().adapt(toolBar);
         GridDataFactory.fillDefaults().align(SWT.END, SWT.TOP).applyTo(toolBar);
 
         ToolBarManager toolBarmanager = new ToolBarManager(toolBar);
@@ -850,6 +853,7 @@ public class UserPropertiesSection extends AbstractECorePropertySection {
             }
 
             cellEditor.setItems(items);
+            
             return cellEditor;
         }
 
@@ -895,6 +899,7 @@ public class UserPropertiesSection extends AbstractECorePropertySection {
             }
 
             cellEditor.setItems(items);
+            
             return cellEditor;
         }
 
@@ -1197,6 +1202,9 @@ public class UserPropertiesSection extends AbstractECorePropertySection {
             Table table = new Table(tableComp, SWT.MULTI | SWT.FULL_SELECTION | SWT.CHECK);
             tableViewer = new CheckboxTableViewer(table);
             tableViewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
+            
+            // Mac Silicon Item height
+            UIUtils.fixMacSiliconItemHeight(table);
             
             tableViewer.getTable().setLinesVisible(true);
 

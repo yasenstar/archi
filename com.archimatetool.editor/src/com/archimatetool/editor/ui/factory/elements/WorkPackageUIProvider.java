@@ -13,7 +13,6 @@ import org.eclipse.swt.graphics.Image;
 
 import com.archimatetool.editor.diagram.editparts.ArchimateElementEditPart;
 import com.archimatetool.editor.diagram.figures.elements.WorkPackageFigure;
-import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.model.IArchimatePackage;
 
@@ -53,6 +52,16 @@ public class WorkPackageUIProvider extends AbstractArchimateElementUIProvider {
 
     @Override
     public Color getDefaultColor() {
-        return ColorFactory.get(255, 224, 224);
+        return defaultImplMigrationColor1;
+    }
+    
+    @Override
+    public boolean hasIcon() {
+        return false;
+    }
+
+    @Override
+    public boolean hasAlternateFigure() {
+        return false;
     }
 }

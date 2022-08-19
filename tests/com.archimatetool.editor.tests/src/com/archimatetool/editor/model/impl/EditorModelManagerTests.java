@@ -7,6 +7,7 @@ package com.archimatetool.editor.model.impl;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -18,11 +19,11 @@ import org.eclipse.gef.commands.CommandStack;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.model.IArchiveManager;
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.model.commands.EObjectFeatureCommand;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IArchimateDiagramModel;
 import com.archimatetool.model.IArchimateFactory;
@@ -162,6 +163,31 @@ public class EditorModelManagerTests {
     }
     
     @Test
+    public void load() throws Exception {
+        File file = TestData.TEST_MODEL_FILE_ARCHISURANCE;
+        
+        IArchimateModel model = editorModelManager.load(file);
+        assertNotNull(model);
+        
+        // File
+        assertEquals(file, model.getFile());
+        
+        // Has a Command Stack
+        assertTrue(model.getAdapter(CommandStack.class) instanceof CommandStack);
+
+        // Has an Archive Manager
+        assertTrue(model.getAdapter(IArchiveManager.class) instanceof IArchiveManager);
+        
+        // Is *not* registered
+        assertEquals(0, editorModelManager.getModels().size());
+        assertFalse(editorModelManager.getModels().contains(model));
+        
+        // Do it again, should *not* be the same
+        IArchimateModel model2 = editorModelManager.loadModel(file);
+        assertNotEquals(model2, model);
+    }
+
+    @Test
     public void isModelLoaded_File() {
         File file = TestData.TEST_MODEL_FILE_ARCHISURANCE;
         assertFalse(editorModelManager.isModelLoaded(file));
@@ -206,7 +232,7 @@ public class EditorModelManagerTests {
         File tmpFile = TestUtils.createTempFile(".archimate");
         model.setFile(tmpFile);
         
-        Preferences.STORE.setValue(IPreferenceConstants.BACKUP_ON_SAVE, false);
+        ArchiPlugin.PREFERENCES.setValue(IPreferenceConstants.BACKUP_ON_SAVE, false);
         
         boolean result = editorModelManager.saveModel(model);
         assertTrue(result);

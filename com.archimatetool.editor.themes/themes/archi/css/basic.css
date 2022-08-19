@@ -26,3 +26,22 @@ TabbedPropertyTitle {
     swt-backgroundBottomKeyline1-color: #eaeaea;
     swt-backgroundBottomKeyline2-color: #eaeaea;
 }
+
+/* Diagram FigureCanvas and Zest Graph backgrounds should always be white */
+FigureCanvas.ArchiFigureCanvas,
+Graph.ArchiGraph {
+    background-color: #FFFFFF;
+}
+
+ThemesExtension { color-definition:
+    '#org-eclipse-gef-PALETTE_BACKGROUND',
+    '#org-eclipse-gef-PALETTE_TOOLBAR_BACKGROUND';
+}
+
+ColorDefinition#org-eclipse-gef-PALETTE_BACKGROUND {
+    color: #FFFFFF;
+}
+
+ColorDefinition#org-eclipse-gef-PALETTE_TOOLBAR_BACKGROUND {
+    color: #F5F5F5;
+}

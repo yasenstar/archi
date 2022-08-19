@@ -76,18 +76,13 @@ public abstract class AbstractBaseEditPart extends AbstractFilteredEditPart {
      */
     @Override
     protected void applicationPreferencesChanged(PropertyChangeEvent event) {
-        if(IPreferenceConstants.DEFAULT_VIEW_FONT.equals(event.getProperty())) {
+        // Default font or colour preferences changed
+        if(IPreferenceConstants.DEFAULT_VIEW_FONT.equals(event.getProperty()) ||
+                event.getProperty().startsWith(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX) ||
+                event.getProperty().equals(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR) ||
+                event.getProperty().startsWith(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR)) {
+            
             refreshFigure();
-        }
-        // Default colour preferences changed
-        else if(event.getProperty().startsWith(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX)) {
-            getFigure().repaint();
-        }
-        else if(event.getProperty().equals(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR)) {
-            getFigure().repaint();
-        }
-        else if(event.getProperty().startsWith(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR)) {
-            getFigure().repaint();
         }
     }
     
@@ -146,7 +141,17 @@ public abstract class AbstractBaseEditPart extends AbstractFilteredEditPart {
      * Refresh this figure and all child figures
      */
     protected void refreshChildrenFigures() {
+        // Refresh this
         refreshFigure();
+        
+        // Connections
+        for(Object editPart : getSourceConnections()) {
+            if(editPart instanceof DiagramConnectionEditPart) {
+                ((DiagramConnectionEditPart)editPart).refreshVisuals();
+            }
+        }
+        
+        // Children
         for(Object editPart : getChildren()) {
             if(editPart instanceof AbstractBaseEditPart) {
                 ((AbstractBaseEditPart)editPart).refreshChildrenFigures();

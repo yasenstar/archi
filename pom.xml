@@ -4,36 +4,41 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.archimatetool</groupId>
-    <artifactId>parent</artifactId>
+    <artifactId>archi</artifactId>
     <version>${revision}</version>
     <packaging>pom</packaging>
 
-    <name>Archi Tool Parent</name>
+    <name>Archi Tool</name>
 
     <properties>
-        <tycho-version>1.5.0</tycho-version>
-        <revision>4.8.1-SNAPSHOT</revision>
+        <revision>4.10.0-SNAPSHOT</revision>
+        <tycho-version>2.7.1</tycho-version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
     </properties>
     
     <repositories>
         <repository>
-            <id>Eclipse repository</id>
+            <id>Eclipse</id>
             <layout>p2</layout>
-            <url>https://download.eclipse.org/releases/2020-12</url>
+            <url>https://download.eclipse.org/eclipse/updates/4.23</url>
         </repository>
     </repositories>
 
+    <!--Core modules -->
     <modules>
         <module>com.archimatetool.canvas</module>
         <module>com.archimatetool.commandline</module>
         <module>com.archimatetool.csv</module>
         <module>com.archimatetool.csv.commandline</module>
+        <module>com.archimatetool.eclipse.feature</module>
         <module>com.archimatetool.editor</module>
         <module>com.archimatetool.editor.browser</module>
         <module>com.archimatetool.editor.feature</module>
         <module>com.archimatetool.editor.launch.win32</module>
         <module>com.archimatetool.editor.themes</module>
         <module>com.archimatetool.export.svg</module>
+        <module>com.archimatetool.gef.feature</module>
         <module>com.archimatetool.hammer</module>
         <module>com.archimatetool.help</module>
         <module>com.archimatetool.jasperreports</module>
@@ -47,16 +52,42 @@
         <module>com.archimatetool.templates</module>
         <module>com.archimatetool.widgets</module>
         <module>com.archimatetool.zest</module>
+        <module>org.eclipse.draw2d</module>
+        <module>org.eclipse.gef</module>
+        <module>org.eclipse.zest.core</module>
+        <module>org.eclipse.zest.layouts</module>
         <module>org.opengroup.archimate.xmlexchange</module>
         <module>org.opengroup.archimate.xmlexchange.commandline</module>
-        <module>tests</module>
-        
-        <!-- For a full product build include the following module -->
-        <!-- <module>com.archimatetool.editor.product</module> -->
     </modules>
+
+    <profiles>
+        <!-- Profile for tests, active by default -->
+        <profile>
+            <id>tests</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <modules>
+                <module>tests</module>
+            </modules>
+        </profile>
+        
+        <!-- Profile for creating a product build, not active by default -->
+        <!-- Use "mvn clean package -P product" to create products but not run tests -->
+        <profile>
+            <id>product</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <modules>
+                <module>com.archimatetool.editor.product</module>
+            </modules>
+        </profile>
+    </profiles>
 
     <build>
         <sourceDirectory>src</sourceDirectory>
+        
         <plugins>
             <plugin>
                 <groupId>org.eclipse.tycho</groupId>
@@ -67,10 +98,23 @@
 
             <plugin>
                 <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-packaging-plugin</artifactId>
+                <version>${tycho-version}</version>
+                <configuration>
+                    <!-- Replace the "-SNAPSHOT" version when generating jars -->
+                    <finalName>${project.artifactId}_${unqualifiedVersion}.${buildQualifier}</finalName>
+                    <!-- Don't add pom.xml and pom.properties files to META-INF folder  -->
+                    <archive>
+                        <addMavenDescriptor>false</addMavenDescriptor>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
                 <artifactId>target-platform-configuration</artifactId>
                 <version>${tycho-version}</version>
                 <configuration>
-                    <resolver>p2</resolver>
                     <environments>
                         <environment>
                             <os>win32</os>
@@ -86,6 +130,11 @@
                             <os>macosx</os>
                             <ws>cocoa</ws>
                             <arch>x86_64</arch>
+                        </environment>
+                        <environment>
+                            <os>macosx</os>
+                            <ws>cocoa</ws>
+                            <arch>aarch64</arch>
                         </environment>
                     </environments>
                 </configuration>
@@ -103,34 +152,16 @@
                         <useProjectSettings>false</useProjectSettings>
                     </configuration>
                 </plugin>
-                <plugin>
-                    <groupId>org.eclipse.tycho</groupId>
-                    <artifactId>tycho-source-plugin</artifactId>
-                    <version>${tycho-version}</version>
-                    <executions>
-                        <execution>
-                            <id>plugin-source</id>
-                            <goals>
-                                <goal>plugin-source</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
+                
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-resources-plugin</artifactId>
-                    <version>3.1.0</version>
+                    <version>3.2.0</version>
                     <configuration>
                         <encoding>ISO-8859-1</encoding>
                     </configuration>
                 </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-antrun-plugin</artifactId>
-                    <version>1.9</version>
-                </plugin>
             </plugins>
-
         </pluginManagement>
 
     </build>

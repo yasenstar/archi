@@ -79,6 +79,7 @@ public interface IPreferenceConstants {
     String EDIT_NAME_ON_NEW_OBJECT = "editNameOnNewObject";
     String PALETTE_STATE = "palette_state";
     String VIEW_TOOLTIPS = "viewTooltips";
+    String SHOW_SPECIALIZATIONS_IN_PALETTE = "showSpecializationsInPalette";
 
     String DIAGRAM_OBJECT_RESIZE_BEHAVIOUR = "resizeBehaviour"; 
     String DIAGRAM_PASTE_SPECIAL_BEHAVIOR = "pasteSpecialBehavior";
@@ -125,6 +126,17 @@ public interface IPreferenceConstants {
     
     String SCALE_IMAGE_EXPORT = "scaleImageExport";
     
+    // Animation
+    String ANIMATE_VIEW = "animateView";
+    String ANIMATION_VIEW_TIME = "animationViewTime";
+    String ANIMATE_VISUALISER_NODES = "animateVisualiserNodes";
+    String ANIMATE_VISUALISER_TIME = "animationVisualiserTime";
+    
+    String EDGE_BROWSER = "edgeBrowser";
+    
+    String HINTS_BROWSER_JS_ENABLED = "hintsJSEnabled";
+    String HINTS_BROWSER_EXTERNAL_HOSTS_ENABLED = "hintsExternalHostsEnabled";
+
     // ======================================= Internal =======================================
     
     String GRID_VISIBLE = "gridVisible";

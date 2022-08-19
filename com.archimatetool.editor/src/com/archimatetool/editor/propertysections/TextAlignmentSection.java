@@ -20,6 +20,7 @@ import org.eclipse.ui.PlatformUI;
 import com.archimatetool.editor.diagram.commands.TextAlignmentCommand;
 import com.archimatetool.editor.diagram.commands.TextPositionCommand;
 import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.utils.PlatformUtils;
 import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModelObject;
@@ -59,13 +60,15 @@ public class TextAlignmentSection extends AbstractECorePropertySection {
     @Override
     protected void createControls(final Composite parent) {
         ((GridLayout)parent.getLayout()).horizontalSpacing = 30;
-        GridLayoutColumnHandler.create(parent, 2); // Allow setting 1 or 2 columns
         
-        Composite group1 = createComposite(parent, 2, true);
+        Composite group1 = createComposite(parent, 2, false);
         createTextAlignmentControls(group1);
         
-        Composite group2 = createComposite(parent, 2, true);
+        Composite group2 = createComposite(parent, 2, false);
         createTextPositionControls(group2);
+        
+        // Allow setting 1 or 2 columns
+        GridLayoutColumnHandler.create(parent, 2).updateColumns();
         
         // Help
         PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
@@ -106,7 +109,9 @@ public class TextAlignmentSection extends AbstractECorePropertySection {
         
         for(int i = 0; i < fAlignmentButtons.length; i++) {
             fAlignmentButtons[i] = new Button(client, SWT.TOGGLE | SWT.FLAT);
-            getWidgetFactory().adapt(fAlignmentButtons[i], true, true); // Need to do it this way for Mac
+            if(!PlatformUtils.isLinux()) { // Doesn't show focus on Linux
+                getWidgetFactory().adapt(fAlignmentButtons[i], true, true);
+            }
             fAlignmentButtons[i].addSelectionListener(adapter);
         }
         
@@ -158,7 +163,9 @@ public class TextAlignmentSection extends AbstractECorePropertySection {
         
         for(int i = 0; i < fPositionButtons.length; i++) {
             fPositionButtons[i] = new Button(client, SWT.TOGGLE | SWT.FLAT);
-            getWidgetFactory().adapt(fPositionButtons[i], true, true); // Need to do it this way for Mac
+            if(!PlatformUtils.isLinux()) { // Doesn't show focus on Linux
+                getWidgetFactory().adapt(fPositionButtons[i], true, true);
+            }
             fPositionButtons[i].addSelectionListener(adapter);
         }
         

@@ -8,7 +8,7 @@ package com.archimatetool.editor.diagram;
 import org.eclipse.draw2d.LightweightSystem;
 import org.eclipse.draw2d.MarginBorder;
 import org.eclipse.draw2d.Viewport;
-import org.eclipse.draw2d.archi.parts.ScrollableThumbnail;
+import org.eclipse.draw2d.parts.ScrollableThumbnail;
 import org.eclipse.gef.EditPart;
 import org.eclipse.gef.LayerConstants;
 import org.eclipse.gef.editparts.ScalableFreeformRootEditPart;
@@ -61,6 +61,7 @@ public class OverviewOutlinePage extends Page implements IContentOutlinePage, IC
         LightweightSystem lws = new LightweightSystem(fCanvas);
         
         fThumbnail = new ScrollableThumbnail((Viewport)fEditPart.getFigure());
+        fThumbnail.setUseScaledGraphics(false);
         fThumbnail.setSource(fEditPart.getLayer(LayerConstants.PRINTABLE_LAYERS));
         fThumbnail.setBorder(new MarginBorder(3));
         lws.setContents(fThumbnail);

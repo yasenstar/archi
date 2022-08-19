@@ -19,11 +19,11 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.commands.FontColorCommand;
 import com.archimatetool.editor.diagram.commands.FontCompoundCommand;
 import com.archimatetool.editor.diagram.commands.FontStyleCommand;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.components.ColorChooser;
 import com.archimatetool.editor.ui.components.FontChooser;
@@ -148,15 +148,17 @@ public class FontSection extends AbstractECorePropertySection {
     @Override
     protected void createControls(final Composite parent) {
         ((GridLayout)parent.getLayout()).horizontalSpacing = 30;
-        GridLayoutColumnHandler.create(parent, 2); // Allow setting 1 or 2 columns
         
-        Composite group1 = createComposite(parent, 2, true);
+        Composite group1 = createComposite(parent, 2, false);
         createFontControl(group1);
         
-        Composite group2 = createComposite(parent, 2, true);
+        Composite group2 = createComposite(parent, 2, false);
         createColorControl(group2);
         
-        Preferences.STORE.addPropertyChangeListener(prefsListener);
+        // Allow setting 1 or 2 columns
+        GridLayoutColumnHandler.create(parent, 2).updateColumns();
+
+        ArchiPlugin.PREFERENCES.addPropertyChangeListener(prefsListener);
 
         // Help
         PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
@@ -164,16 +166,14 @@ public class FontSection extends AbstractECorePropertySection {
     
     private void createFontControl(Composite parent) {
         createLabel(parent, Messages.FontSection_0, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
-        fFontChooser = new FontChooser(parent);
-        getWidgetFactory().adapt(fFontChooser.getControl(), true, true); // Need to do it this way for Mac
+        fFontChooser = new FontChooser(parent, getWidgetFactory());
         fFontChooser.addListener(fontListener);
     }
     
     private void createColorControl(Composite parent) {
         createLabel(parent, Messages.FontColorSection_0, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
-        fColorChooser = new ColorChooser(parent);
+        fColorChooser = new ColorChooser(parent, getWidgetFactory());
         fColorChooser.setDoShowPreferencesMenuItem(false);
-        getWidgetFactory().adapt(fColorChooser.getControl(), true, true);
         fColorChooser.addListener(colorListener);
     }
     
@@ -237,7 +237,7 @@ public class FontSection extends AbstractECorePropertySection {
             fColorChooser.removeListener(colorListener);
         }
         
-        Preferences.STORE.removePropertyChangeListener(prefsListener);
+        ArchiPlugin.PREFERENCES.removePropertyChangeListener(prefsListener);
     }
 
 }

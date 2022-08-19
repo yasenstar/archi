@@ -43,6 +43,7 @@ import org.eclipse.ui.PlatformUI;
 import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.ui.FontFactory;
 import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.editor.utils.StringUtils;
 
 /**
@@ -98,7 +99,7 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         FontData getFontData() {
             // Get font data from Preferences store
             if(fontData == null) {
-                String fontDetails = Preferences.STORE.getString(prefsKey);
+                String fontDetails = ArchiPlugin.PREFERENCES.getString(prefsKey);
                 if(StringUtils.isSet(fontDetails)) {
                     fontData = new FontData(fontDetails);
                 }
@@ -117,7 +118,7 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         
         @Override
         void performOK() {
-            Preferences.STORE.setValue(prefsKey, getFontData().equals(getDefaultFontData()) ? "" : getFontData().toString()); //$NON-NLS-1$
+            ArchiPlugin.PREFERENCES.setValue(prefsKey, getFontData().equals(getDefaultFontData()) ? "" : getFontData().toString()); //$NON-NLS-1$
         }
     }
 
@@ -133,7 +134,7 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
     private Label fFontPreviewLabel;
     
     public FontsPreferencePage() {
-        setPreferenceStore(ArchiPlugin.INSTANCE.getPreferenceStore());
+        setPreferenceStore(ArchiPlugin.PREFERENCES);
         setDescription(Messages.FontsPreferencePage_21);
     }
     
@@ -174,6 +175,9 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
     
     private void createTable(Composite parent) {
         fTableViewer = new TableViewer(parent);
+        
+        // Mac Silicon Item height
+        UIUtils.fixMacSiliconItemHeight(fTableViewer.getTable());
         
         GridDataFactory.create(GridData.FILL_BOTH).hint(SWT.DEFAULT, 200).applyTo(fTableViewer.getTable());
         
@@ -383,6 +387,7 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
     
     private FontData openFontDialog(FontInfo fontInfo) {
         FontDialog dialog = new FontDialog(fTableViewer.getControl().getShell());
+        dialog.setEffectsVisible(false); // Don't allow underline/strikeout on Windows. See https://github.com/archimatetool/archi/issues/851
         dialog.setText(Messages.FontsPreferencePage_3);
         dialog.setFontList(new FontData[] { fontInfo.getFontData() });
         return dialog.open();

@@ -8,6 +8,7 @@ package com.archimatetool.help.hints;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.Hashtable;
 
 import org.eclipse.core.runtime.FileLocator;
@@ -29,13 +30,17 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.SWTError;
 import org.eclipse.swt.browser.Browser;
+import org.eclipse.swt.browser.LocationAdapter;
+import org.eclipse.swt.browser.LocationEvent;
 import org.eclipse.swt.browser.ProgressEvent;
 import org.eclipse.swt.browser.ProgressListener;
 import org.eclipse.swt.custom.CLabel;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.ISelectionListener;
@@ -44,7 +49,8 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 import org.osgi.framework.Bundle;
 
-import com.archimatetool.editor.ui.ColorFactory;
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.ui.services.ComponentSelectionManager;
 import com.archimatetool.editor.ui.services.IComponentSelectionListener;
@@ -66,7 +72,9 @@ public class HintsView
 extends ViewPart
 implements IContextProvider, IHintsView, ISelectionListener, IComponentSelectionListener {
     
-    static File cssFile = new File(ArchiHelpPlugin.INSTANCE.getHintsFolder(), "style.css"); //$NON-NLS-1$
+    
+    // CSS string
+    private String cssString = ""; //$NON-NLS-1$
 
     private Browser fBrowser;
     
@@ -83,7 +91,7 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
     
     private boolean fPageLoaded;
     
-    private class PinAction extends Action {
+    private static class PinAction extends Action {
         PinAction() {
             super(Messages.HintsView_0, IAction.AS_CHECK_BOX);
             setToolTipText(Messages.HintsView_1);
@@ -104,6 +112,16 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
         }
     }
 
+    public HintsView() {
+        // Load CSS String
+        try {
+            File cssFile = new File(ArchiHelpPlugin.INSTANCE.getHintsFolder(), "style.css"); //$NON-NLS-1$
+            cssString = new String(Files.readAllBytes(cssFile.toPath()));
+        }
+        catch(IOException ex) {
+            ex.printStackTrace();
+        }
+    }
     
     @Override
     public void createPartControl(Composite parent) {
@@ -133,6 +151,13 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
          */
         fBrowser = createBrowser(parent);
         if(fBrowser == null) {
+            // Create a message and show that instead
+            fTitleLabel.setText(Messages.HintsView_2);
+            Text text = new Text(parent, SWT.MULTI | SWT.WRAP);
+            text.setLayoutData(new GridData(GridData.FILL_BOTH));
+            text.setText(Messages.HintsView_3);
+            text.setForeground(new Color(255, 45, 45));
+
             return;
         }
         
@@ -182,20 +207,30 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
     private Browser createBrowser(Composite parent) {
         Browser browser = null;
         try {
-            // On Linux set this, but check that user did not try to override for e.g. later versions.
-            if(PlatformUtils.isGTK() && System.getProperty("org.eclipse.swt.browser.DefaultType") == null) { //$NON-NLS-1$ 
-                System.setProperty("org.eclipse.swt.browser.UseWebKitGTK", "true"); //$NON-NLS-1$ //$NON-NLS-2$
-            }
             browser = new Browser(parent, SWT.NONE);
+            
+            // Don't allow external hosts if set
+            browser.addLocationListener(new LocationAdapter() {
+                @Override
+                public void changing(LocationEvent e) {
+                    if(!ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.HINTS_BROWSER_EXTERNAL_HOSTS_ENABLED)) {
+                        e.doit = e.location != null &&
+                                (e.location.startsWith("file:") //$NON-NLS-1$
+                                || e.location.startsWith("data:") //$NON-NLS-1$
+                                || e.location.startsWith("about:")); //$NON-NLS-1$
+                    }
+                }
+            });
         }
         catch(SWTError error) {
         	error.printStackTrace();
-            // Create a message and show that instead
-            fTitleLabel.setText(Messages.HintsView_2);
-            Text text = new Text(parent, SWT.MULTI | SWT.WRAP);
-            text.setLayoutData(new GridData(GridData.FILL_BOTH));
-            text.setText(Messages.HintsView_3);
-            text.setForeground(ColorFactory.get(255, 45, 45));
+            
+        	// Remove junk child controls that might be created with failed load
+        	for(Control child : parent.getChildren()) {
+                if(child != fTitleLabel) {
+                    child.dispose();
+                }
+            }
         }
         
         return browser;
@@ -234,6 +269,10 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
     }
     
     private void showHintForSelected(Object source, Object selected) {
+        if(fBrowser == null) {
+            return;
+        }
+        
         if(fActionPinContent.isChecked()) {
             return;
         }
@@ -255,6 +294,9 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
         else {
             actualObject = selected;
         }
+        
+        // Enable JS
+        fBrowser.setJavascriptEnabled(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.HINTS_BROWSER_JS_ENABLED));
         
         // This is a Hint Provider so this takes priority...
         if(actualObject instanceof IHelpHintProvider) {
@@ -296,7 +338,7 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
 
                 // Load page
                 fPageLoaded = false;
-                fBrowser.setUrl(hint.path);
+                fBrowser.setUrl("file:///" + hint.path); //$NON-NLS-1$
                 fLastPath = hint.path;
 
                 // Kludge for Mac/Safari when displaying hint on mouse rollover menu item in MagicConnectionCreationTool
@@ -343,9 +385,9 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
         StringBuffer html = new StringBuffer();
         html.append("<html><head>"); //$NON-NLS-1$
         
-        html.append("<link rel=\"stylesheet\" href=\""); //$NON-NLS-1$
-        html.append(cssFile.getPath());
-        html.append("\" type=\"text/css\">"); //$NON-NLS-1$
+        html.append("<style>"); //$NON-NLS-1$
+        html.append(cssString);
+        html.append("</style>"); //$NON-NLS-1$
         
         html.append("</head>"); //$NON-NLS-1$
         

@@ -29,12 +29,13 @@ public class InfluenceConnectionFigure extends AbstractArchimateConnectionFigure
         return new PolylineDecoration();
     }
     
+    private RotatableDecoration fDecoratorTarget = createFigureTargetDecoration();
+
     public InfluenceConnectionFigure() {
     }
 
     @Override
     protected void setFigureProperties() {
-        setTargetDecoration(createFigureTargetDecoration()); 
         setLineStyle(SWT.LINE_CUSTOM); // We have to explitly set this otherwise dashes/dots don't show
         setLineDash(getLineDashFloats());
     }
@@ -46,7 +47,7 @@ public class InfluenceConnectionFigure extends AbstractArchimateConnectionFigure
         // Show Strength after Name if we don't show it already by means of the text expression
         if(getModelConnection().isNameVisible()) {
             String text = getConnectionLabel().getText();
-            String strength = ((IInfluenceRelationship)getModelConnection().getArchimateRelationship()).getStrength();
+            String strength = ((IInfluenceRelationship)getDiagramModelArchimateConnection().getArchimateRelationship()).getStrength();
             if(StringUtils.isSet(strength) && !text.contains(strength)) {
                 text += " " + strength; //$NON-NLS-1$
                 getConnectionLabel().setText(text);
@@ -58,5 +59,13 @@ public class InfluenceConnectionFigure extends AbstractArchimateConnectionFigure
     protected float[] getLineDashFloats() {
         double scale = Math.min(FigureUtils.getFigureScale(this), 1.0); // only scale below 1.0
         return new float[] { (float)(6 * scale), (float)(3 * scale) };
+    }
+    
+    @Override
+    public void refreshVisuals() {
+        setTargetDecoration(usePlainJunctionTargetDecoration() ? null : fDecoratorTarget);
+        
+        // This last
+        super.refreshVisuals();
     }
 }

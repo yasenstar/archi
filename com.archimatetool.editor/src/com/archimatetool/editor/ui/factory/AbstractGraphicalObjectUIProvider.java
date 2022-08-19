@@ -5,11 +5,9 @@
  */
 package com.archimatetool.editor.ui.factory;
 
-import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.swt.graphics.Color;
 
-import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.model.ITextAlignment;
 import com.archimatetool.model.ITextPosition;
 
@@ -21,17 +19,20 @@ import com.archimatetool.model.ITextPosition;
 public abstract class AbstractGraphicalObjectUIProvider extends AbstractObjectUIProvider
 implements IGraphicalObjectUIProvider {
     
+    private static Color defaultColor = new Color(255, 255, 255);
+    private static Color defaultLineColor = new Color(92, 92, 92);
+    
     protected AbstractGraphicalObjectUIProvider() {
     }
 
     @Override
     public Color getDefaultColor() {
-        return ColorConstants.white;
+        return defaultColor;
     }
     
     @Override
     public Color getDefaultLineColor() {
-        return ColorFactory.get(92, 92, 92);
+        return defaultLineColor;
     }
     
     @Override
@@ -39,11 +40,14 @@ implements IGraphicalObjectUIProvider {
         return new Dimension(-1, -1);
     }
     
+    /**
+     * @deprecated Use {@link #getDefaultSize()}
+     */
     @Override
     public Dimension getUserDefaultSize() {
         return getDefaultSize();
     }
-    
+
     @Override
     public int getDefaultTextAlignment() {
         return ITextAlignment.TEXT_ALIGNMENT_CENTER;
@@ -52,5 +56,10 @@ implements IGraphicalObjectUIProvider {
     @Override
     public int getDefaultTextPosition() {
         return ITextPosition.TEXT_POSITION_TOP;
+    }
+    
+    @Override
+    public boolean hasIcon() {
+        return false;
     }
 }

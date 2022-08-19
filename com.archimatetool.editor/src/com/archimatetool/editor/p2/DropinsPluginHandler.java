@@ -6,7 +6,6 @@
 package com.archimatetool.editor.p2;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.FileVisitResult;
@@ -49,20 +48,40 @@ public class DropinsPluginHandler {
     
     private Shell shell;
     
-    private File userDropinsFolder, systemDropinsFolder, instanceDropinsFolder;
+    /**
+     * There are 3 possible locations for a dropins folder:
+     * 1. The user location set in Archi.ini
+     * 2. The "dropins" folder at the same level as the configuration location
+     * 3. The "dropins" folder in the app installation location
+     * 
+     * (2) and (3) might be the same location if osgi.configuration.area is not set in Archi.ini
+     * Or, in Archi.ini default settings (1) and (2) happen to be the same location
+     */
+    private File userDropinsFolder, installationDropinsFolder, configurationDropinsFolder;
 
     private boolean success;
     
     static final int CONTINUE = 0;
     static final int RESTART = 1;
     
+    /**
+     * The name of the magic file that denotes that the *.archiplugin or *.zip archive is an Archi plug-in
+     * It can also include meta information such as listing plug-ins to delete
+     */
     static final String MAGIC_ENTRY = "archi-plugin"; //$NON-NLS-1$
     
+    /**
+     * Setting in Archi.ini for user dropins folder
+     * -Dorg.eclipse.equinox.p2.reconciler.dropins.directory=%user.home%/subfolder/dropins
+     */
     static final String DROPINS_DIRECTORY = "org.eclipse.equinox.p2.reconciler.dropins.directory"; //$NON-NLS-1$
     
     public DropinsPluginHandler() { 
     }
 
+    /**
+     * @return All user installed plug-ins in any of the three "dropins" locations
+     */
     public List<Bundle> getInstalledPlugins() throws IOException {
         List<Bundle> list = new ArrayList<Bundle>();
         
@@ -76,10 +95,14 @@ public class DropinsPluginHandler {
         return list;
     }
     
+    /**
+     * Install plug-ins
+     */
     public int install(Shell shell) throws IOException {
         this.shell = shell;
         
-        if(!checkCanWriteToFolder(getDefaultDropinsFolder())) {
+        // Check we have write access
+        if(!checkCanWriteToFolder(getUserInstallationDropinsFolder())) {
             return status();
         }
         
@@ -153,12 +176,13 @@ public class DropinsPluginHandler {
         try {
             ZipUtils.unpackZip(zipFile, tmpFolder);
             
-            File pluginsFolder = getDefaultDropinsFolder();
+            File pluginsFolder = getUserInstallationDropinsFolder();
             pluginsFolder.mkdirs();
 
             for(File file : tmpFolder.listFiles()) {
-                // Ignore the magic entry file
+                // Handle the magic file
                 if(MAGIC_ENTRY.equalsIgnoreCase(file.getName())) {
+                    handleMagicFile(file, pluginsFolder);
                     continue;
                 }
                 
@@ -217,7 +241,28 @@ public class DropinsPluginHandler {
         return CONTINUE;
     }
     
-    // Delete matching older plugin
+    /**
+     * Handle anything in the Magic file
+     */
+    private void handleMagicFile(File magicFile, File pluginsFolder) throws IOException {
+        for(String line : Files.readAllLines(magicFile.toPath())) {
+            // A plug-in to delete
+            if(line.startsWith("delete:")) { //$NON-NLS-1$
+                String pluginName = line.substring(7).strip();
+                
+                for(File pluginFile : pluginsFolder.listFiles()) {
+                    String targetPluginName = getPluginName(pluginFile.getName());
+                    if(targetPluginName.equals(pluginName)) {
+                        addFileToDeleteOnExit(pluginFile);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Delete matching older plugin on app exit
+     */
     private void deleteOlderPluginOnExit(File newPlugin, File pluginsFolder) {
         for(File file : findMatchingPlugins(pluginsFolder, newPlugin)) {
             addFileToDeleteOnExit(file);
@@ -227,12 +272,9 @@ public class DropinsPluginHandler {
     private File[] findMatchingPlugins(File pluginsFolder, File newPlugin) {
         String pluginName = getPluginName(newPlugin.getName());
         
-        return pluginsFolder.listFiles(new FileFilter() {
-            @Override
-            public boolean accept(File file) {
-                String targetPluginName = getPluginName(file.getName());
-                return targetPluginName.equals(pluginName) && !newPlugin.getName().equals(file.getName());
-            }
+        return pluginsFolder.listFiles((file) -> {
+            String targetPluginName = getPluginName(file.getName());
+            return targetPluginName.equals(pluginName) && !newPlugin.getName().equals(file.getName());
         });
     }
     
@@ -284,23 +326,25 @@ public class DropinsPluginHandler {
         return ZipUtils.isZipFile(file) && ZipUtils.hasZipEntry(file, MAGIC_ENTRY);
     }
     
-    private File getDefaultDropinsFolder() throws IOException {
+    /**
+     * @return The dropins folder to use to install a new plug-in
+     */
+    private File getUserInstallationDropinsFolder() throws IOException {
         // Get user dropins folder as set in Archi.ini
         File dropinsFolder = getUserDropinsFolder();
         
-        // Else get the instance dropins folder as set in osgi.instance.area
+        // If not set, use the "dropins" folder at the same level as the configuration locaton
+        // This is more likely to have write access than getInstallLocationDropinsFolder()
         if(dropinsFolder == null) {
-            dropinsFolder = getInstanceDropinsFolder();
-        }
-        
-        // Else get the dropins folder as the "dropins" folder in the app installation directory
-        if(dropinsFolder == null) {
-            dropinsFolder = getSystemDropinsFolder();
+            dropinsFolder = getConfigurationLocationDropinsFolder();
         }
         
         return dropinsFolder;
     }
     
+    /**
+     * @return location of user dropins folder as set in Archi.ini
+     */
     private File getUserDropinsFolder() {
         if(userDropinsFolder == null) {
             // If the dropins dir is set in Archi.ini
@@ -315,24 +359,31 @@ public class DropinsPluginHandler {
         return userDropinsFolder;
     }
     
-    private File getInstanceDropinsFolder() throws IOException {
-        if(instanceDropinsFolder == null) {
-            URL url = Platform.getInstanceLocation().getURL();
+    /**
+     * @return The "dropins" folder at the same level as the configuration location
+     */
+    private File getConfigurationLocationDropinsFolder() throws IOException {
+        if(configurationDropinsFolder == null) {
+            URL url = Platform.getConfigurationLocation().getURL();
             url = FileLocator.resolve(url);
-            instanceDropinsFolder = new File(url.getPath(), "dropins"); //$NON-NLS-1$
+            File parentFolder = new File(url.getPath()).getParentFile();
+            configurationDropinsFolder = new File(parentFolder, "dropins"); //$NON-NLS-1$
         }
         
-        return instanceDropinsFolder;
+        return configurationDropinsFolder;
     }
     
-    private File getSystemDropinsFolder() throws IOException {
-        if(systemDropinsFolder == null) {
+    /**
+     * @return The "dropins" folder in the app's installation location
+     */
+    private File getInstallLocationDropinsFolder() throws IOException {
+        if(installationDropinsFolder == null) {
             URL url = Platform.getInstallLocation().getURL();
             url = FileLocator.resolve(url);
-            systemDropinsFolder = new File(url.getPath(), "dropins"); //$NON-NLS-1$
+            installationDropinsFolder = new File(url.getPath(), "dropins"); //$NON-NLS-1$
         }
         
-        return systemDropinsFolder;
+        return installationDropinsFolder;
     }
     
     /**
@@ -378,11 +429,13 @@ public class DropinsPluginHandler {
      * If the bundle is in one of the "dropins" folders return its file (jar or folder), else return null
      */
     File getDropinsBundleFile(Bundle bundle) throws IOException {
-        File bundleFile = FileLocator.getBundleFile(bundle);
+        // Normalise the file with File#getCanonicalFile() in case it has ".." in the path (on Mac). If it does, File#equals(File) doesn't work
+        File bundleFile = FileLocator.getBundleFile(bundle).getCanonicalFile();
         File parentFolder = bundleFile.getParentFile();
+        
         return (parentFolder.equals(getUserDropinsFolder())
-                || parentFolder.equals(getInstanceDropinsFolder()) 
-                || parentFolder.equals(getSystemDropinsFolder())) ? bundleFile : null;
+                || parentFolder.equals(getConfigurationLocationDropinsFolder()) 
+                || parentFolder.equals(getInstallLocationDropinsFolder())) ? bundleFile : null;
     }
 
     private List<File> askOpenFiles() {
@@ -390,19 +443,17 @@ public class DropinsPluginHandler {
         dialog.setFilterExtensions(new String[] { "*.archiplugin", "*.zip", "*.*" } ); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         String path = dialog.open();
         
-        // TODO: Bug on Mac 10.12 and newer - Open dialog does not close straight away
-        // See https://bugs.eclipse.org/bugs/show_bug.cgi?id=527306
-        if(path != null && PlatformUtils.isMac()) {
-            while(Display.getCurrent().readAndDispatch());
-        }
-        
         List<File> files = new ArrayList<File>();
         
         if(path != null) {
+            // Issue on OpenJDK if path is like C: or D: - no slash is added when creating File
+            String filterPath = dialog.getFilterPath() + File.separator;;
+
             for(String name : dialog.getFileNames()) {
-                String filterPath = dialog.getFilterPath();
-                filterPath += File.separator; // Issue on OpenJDK if path is like C: or D: - no slash is added when creating File
-                files.add(new File(filterPath, name));
+                File file = new File(filterPath, name);
+                if(file.exists()) {
+                    files.add(file);
+                }
             }
         }
         
@@ -423,6 +474,7 @@ public class DropinsPluginHandler {
     private static Set<File> filesToDelete;
     
     private void addFileToDeleteOnExit(File file) {
+        // Do this only once because filesToDelete is static
         if(filesToDelete == null) {
             filesToDelete = new HashSet<>();
             
@@ -446,10 +498,12 @@ public class DropinsPluginHandler {
             }
         }
         
+        // Add to static list
+        // Will not be added more than once
         filesToDelete.add(file);
     }
     
-    private static void deleteFiles() {
+    private void deleteFiles() {
         try {
             for(File file : filesToDelete) {
                 if(file.isDirectory()) {
@@ -465,7 +519,7 @@ public class DropinsPluginHandler {
         }
     }
     
-    private static void recursiveDelete(File file) throws IOException {
+    private void recursiveDelete(File file) throws IOException {
         Files.walkFileTree(file.toPath(), new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {

@@ -18,11 +18,11 @@ import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
@@ -186,6 +186,8 @@ public class SaveCanvasAsTemplateWizardPage extends WizardPage {
         label.setLayoutData(gd);
 
         fPreviewLabel = new Label(thumbsGroup, SWT.BORDER);
+        fPreviewLabel.setAlignment(SWT.CENTER);
+        fPreviewLabel.setBackground(new Color(255, 255, 255));
         gd = new GridData(GridData.FILL_BOTH);
         gd.heightHint = 120;
         gd.widthHint = 150;
@@ -200,20 +202,13 @@ public class SaveCanvasAsTemplateWizardPage extends WizardPage {
             }
         });
         
-        Display.getCurrent().asyncExec(new Runnable() {
-            @Override
-            public void run() {
-                TemplateUtils.createThumbnailPreviewImage(fCanvasModel, fPreviewLabel);
-            }
-        });
-        
+        // This will be called initially as well as on resize
         fPreviewLabel.addControlListener(new ControlAdapter() {
             int oldTime;
             
             @Override
             public void controlResized(ControlEvent e) {
-                if(e.time - oldTime > 10) {
-                    disposePreviewImage();
+                if(e.time - oldTime > 50) {
                     TemplateUtils.createThumbnailPreviewImage(fCanvasModel, fPreviewLabel);
                 }
                 oldTime = e.time;
@@ -252,7 +247,14 @@ public class SaveCanvasAsTemplateWizardPage extends WizardPage {
         FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
         dialog.setText(Messages.SaveCanvasAsTemplateWizardPage_9);
         dialog.setFilterExtensions(new String[] { "*" + fTemplateManager.getTemplateFileExtension(), "*.*" } ); //$NON-NLS-1$ //$NON-NLS-2$
+        File file = new File(fFileTextField.getText());
+        dialog.setFileName(file.getName());
+        
+        // Does nothing on macOS 10.15+. On Windows will work after Eclipse 4.21
+        dialog.setOverwrite(false);
+        
         String path = dialog.open();
+        
         if(path != null) {
             // Only Windows adds the extension by default
             if(dialog.getFilterIndex() == 0 && !path.endsWith(CanvasTemplateManager.CANVAS_TEMPLATE_FILE_EXTENSION)) {
@@ -260,6 +262,7 @@ public class SaveCanvasAsTemplateWizardPage extends WizardPage {
             }
             return new File(path);
         }
+        
         return null;
     }
     
@@ -288,7 +291,7 @@ public class SaveCanvasAsTemplateWizardPage extends WizardPage {
     }
     
     private void disposePreviewImage() {
-        if(fPreviewLabel != null && fPreviewLabel.getImage() != null && !fPreviewLabel.getImage().isDisposed()) {
+        if(fPreviewLabel != null && fPreviewLabel.getImage() != null) {
             fPreviewLabel.getImage().dispose();
         }
     }

@@ -43,12 +43,12 @@ import org.stringtemplate.v4.StringRenderer;
 import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.browser.BrowserEditorInput;
 import com.archimatetool.editor.browser.IBrowserEditor;
+import com.archimatetool.editor.browser.IBrowserEditorInput;
 import com.archimatetool.editor.diagram.util.DiagramUtils;
 import com.archimatetool.editor.diagram.util.ModelReferencedImage;
 import com.archimatetool.editor.ui.ImageFactory;
 import com.archimatetool.editor.ui.services.EditorManager;
 import com.archimatetool.editor.utils.FileUtils;
-import com.archimatetool.editor.utils.PlatformUtils;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IArchimateConcept;
@@ -159,7 +159,8 @@ public class HTMLReportExporter {
                 File file = createReport(PREVIEW_FOLDER, "preview-" + fModel.getId() + ".html", monitor);  //$NON-NLS-1$//$NON-NLS-2$
                 
                 // Open it in internal Browser
-                BrowserEditorInput input = new BrowserEditorInput(file.getPath(), Messages.HTMLReportExporter_0 + " " + fModel.getName()); //$NON-NLS-1$
+                IBrowserEditorInput input = new BrowserEditorInput("file:///" + file.getPath(), Messages.HTMLReportExporter_0 + " " + fModel.getName()); //$NON-NLS-1$ //$NON-NLS-2$
+                
                 IBrowserEditor editor = (IBrowserEditor)EditorManager.openEditor(input, IBrowserEditor.ID);
                 if(editor != null && editor.getBrowser() != null) {
                     editor.getBrowser().refresh();
@@ -503,12 +504,6 @@ public class HTMLReportExporter {
         }
         
         store.setValue(PREFS_LAST_FOLDER, folder.getAbsolutePath());
-        
-        // TODO: Bug on Mac 10.12 and newer - Open dialog does not close straight away
-        // See https://bugs.eclipse.org/bugs/show_bug.cgi?id=527306
-        if(PlatformUtils.isMac()) {
-            while(Display.getCurrent().readAndDispatch());
-        }
         
         return folder;
     }

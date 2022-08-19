@@ -5,7 +5,6 @@
  */
 package com.archimatetool.editor.diagram.figures.connections;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import org.eclipse.draw2d.ColorConstants;
@@ -13,9 +12,6 @@ import org.eclipse.draw2d.ConnectionLocator;
 import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.Locator;
-import org.eclipse.draw2d.PolygonDecoration;
-import org.eclipse.draw2d.SWTGraphics;
-import org.eclipse.draw2d.ScaledGraphics;
 // line-curves patch by Jean-Baptiste Sarrodie (aka Jaiguru)
 // Use alternate PolylineConnection
 //import org.eclipse.draw2d.PolylineConnection;
@@ -27,9 +23,10 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Path;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.figures.ToolTipFigure;
+import com.archimatetool.editor.diagram.util.AnimationUtil;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.FontFactory;
 import com.archimatetool.editor.ui.textrender.TextRenderer;
@@ -58,6 +55,8 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
     protected Color fFontColor;
     protected Color fLineColor;
     
+    private static Color TARGET_FEEDBACK_COLOR = new Color(0, 0, 255);
+    
     protected boolean SHOW_TARGET_FEEDBACK = false;
     
 	@Override
@@ -65,6 +64,9 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
 	    fDiagramModelConnection = connection;
 	    
 	    setFigureProperties();
+        
+        // Have to add this if we want Animation to work!
+        AnimationUtil.addConnectionForRoutingAnimation(this);
 	}
 	
 	@Override
@@ -73,7 +75,6 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
 	}
 	
 	protected void setFigureProperties() {
-		setTargetDecoration(new PolygonDecoration()); // arrow at target endpoint
 	}
 	
     @Override
@@ -94,7 +95,7 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
         
         setLineWidth();
         
-        getFlowPage().setOpaque(Preferences.STORE.getInt(IPreferenceConstants.CONNECTION_LABEL_STRATEGY) == CONNECTION_LABEL_OPAQUE);
+        getFlowPage().setOpaque(ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.CONNECTION_LABEL_STRATEGY) == CONNECTION_LABEL_OPAQUE);
         
         repaint(); // repaint when figure changes
     }
@@ -229,10 +230,13 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
     
     @Override
     public IFigure getToolTip() {
-        if(super.getToolTip() == null && Preferences.doShowViewTooltips()) {
+        boolean doShowViewTooltips = ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.VIEW_TOOLTIPS);
+        
+        if(super.getToolTip() == null && doShowViewTooltips) {
             setToolTip(new ToolTipFigure());
         }
-        return Preferences.doShowViewTooltips() ? super.getToolTip() : null;
+        
+        return doShowViewTooltips ? super.getToolTip() : null;
     }
     
     /**
@@ -278,7 +282,7 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
     @Override
     public void paintFigure(Graphics graphics) {
         if(SHOW_TARGET_FEEDBACK) {
-            setForegroundColor(ColorFactory.get(0, 0, 255));
+            setForegroundColor(TARGET_FEEDBACK_COLOR);
             setLineWidth(getModelConnection().getLineWidth() + 1);
         }
         else {
@@ -287,7 +291,7 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
         }
 
         if(StringUtils.isSet(getConnectionLabel().getText()) && 
-                Preferences.STORE.getInt(IPreferenceConstants.CONNECTION_LABEL_STRATEGY) == CONNECTION_LABEL_CLIPPED) {
+                ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.CONNECTION_LABEL_STRATEGY) == CONNECTION_LABEL_CLIPPED) {
             clipTextLabel(graphics);
         }
         else {
@@ -326,31 +330,6 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
         
         graphics.clipPath(path);
         
-        // Monkey patch to fix NPE when connection is disabled when Viewpoint set
-        // If we set private field sharedClipping to false then SWTGraphics.checkSharedClipping() is not called
-        // See https://github.com/archimatetool/archi/issues/431
-        if(!isEnabled()) {
-            try {
-                Graphics graphicsCopy = graphics;
-                
-                // ScaledGraphics is a wrapper around SWTGraphics
-                if(graphics instanceof ScaledGraphics) {
-                    Field f = graphicsCopy.getClass().getDeclaredField("graphics"); //$NON-NLS-1$
-                    f.setAccessible(true);
-                    graphicsCopy = (Graphics)f.get(graphics);
-                }
-                
-                // Set the "sharedClipping" field of the SWTGraphics class (or ExtendedSWTGraphics class) to false
-                Field f = SWTGraphics.class.getDeclaredField("sharedClipping"); //$NON-NLS-1$
-                f.setAccessible(true);
-                f.set(graphicsCopy, false);
-            }
-            catch(NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                // Consume this exception as this only applies to SWTGraphics and ScaledGraphics
-                // SVG Image Export uses GraphicsToGraphics2DAdaptor and will throw a NoSuchFieldException
-            }
-        }
-
         super.paintFigure(graphics);
         
         path.dispose();

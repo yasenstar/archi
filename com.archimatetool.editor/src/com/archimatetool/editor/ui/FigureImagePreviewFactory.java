@@ -19,7 +19,9 @@ import com.archimatetool.editor.ui.factory.IGraphicalObjectUIProvider;
 import com.archimatetool.editor.ui.factory.ObjectUIFactory;
 import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateFactory;
+import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModelArchimateObject;
+import com.archimatetool.model.ITextAlignment;
 
 
 /**
@@ -65,10 +67,16 @@ public class FigureImagePreviewFactory {
             IDiagramModelArchimateObject dmo = IArchimateFactory.eINSTANCE.createDiagramModelArchimateObject();
             dmo.setArchimateElement((IArchimateElement)IArchimateFactory.eINSTANCE.create(eClass));
             dmo.setName(provider.getDefaultName());
-            dmo.setTextPosition(provider.getDefaultTextPosition());
-            dmo.setTextAlignment(provider.getDefaultTextAlignment());
-            ColorFactory.setDefaultColors(dmo);
             dmo.setType(type);
+            
+            // Special case for text alignment
+            if(eClass == IArchimatePackage.eINSTANCE.getGrouping()) {
+                dmo.setTextAlignment(ITextAlignment.TEXT_ALIGNMENT_LEFT);
+            }
+            
+            // Use inbuilt default colours
+            dmo.setFillColor(ColorFactory.convertColorToString(ColorFactory.getInbuiltDefaultFillColor(dmo)));
+            dmo.setLineColor(ColorFactory.convertColorToString(ColorFactory.getInbuiltDefaultLineColor(dmo)));
 
             GraphicalEditPart editPart = (GraphicalEditPart)provider.createEditPart();
             editPart.setModel(dmo);

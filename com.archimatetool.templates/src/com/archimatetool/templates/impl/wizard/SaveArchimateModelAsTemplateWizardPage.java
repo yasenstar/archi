@@ -19,6 +19,7 @@ import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -31,7 +32,7 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.ui.PlatformUI;
 
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.editor.utils.StringUtils;
@@ -101,7 +102,7 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         String defaultFileName = Messages.SaveArchimateModelAsTemplateWizardPage_5 + ArchimateTemplateManager.ARCHIMATE_TEMPLATE_FILE_EXTENSION;
         
         // Get last folder used
-        String lastFolderName = Preferences.STORE.getString(PREFS_LAST_FOLDER);
+        String lastFolderName = ArchiPlugin.PREFERENCES.getString(PREFS_LAST_FOLDER);
         File lastFolder = new File(lastFolderName);
         if(lastFolder.exists() && lastFolder.isDirectory()) {
             fFileTextField.setText(new File(lastFolder, defaultFileName).getPath());
@@ -198,15 +199,17 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         fModelViewsTreeViewer.setInput(fModel.getFolder(FolderType.DIAGRAMS));
         gd = new GridData(GridData.FILL_BOTH);
         gd.heightHint = 120;
-        //gd.widthHint = 140;
+        gd.widthHint = 140;
         fModelViewsTreeViewer.getControl().setLayoutData(gd);
         fModelViewsTreeViewer.getControl().setEnabled(thumbsEnabled);
         
         fPreviewLabel = new Label(thumbContainer, SWT.BORDER);
+        fPreviewLabel.setBackground(new Color(255, 255, 255));
         gd = new GridData(GridData.FILL_BOTH);
         gd.heightHint = 120;
         gd.widthHint = 150;
         fPreviewLabel.setLayoutData(gd);
+        fPreviewLabel.setAlignment(SWT.CENTER);
         
         // Dispose of the image here not in the main dispose() method because if the help system is showing then 
         // the TrayDialog is resized and this label is asked to relayout.
@@ -220,14 +223,12 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         fModelViewsTreeViewer.addSelectionChangedListener(new ISelectionChangedListener() {
             @Override
             public void selectionChanged(SelectionChangedEvent event) {
-                disposePreviewImage();
-
                 Object o = ((IStructuredSelection)event.getSelection()).getFirstElement();
                 if(o instanceof IDiagramModel) {
                     TemplateUtils.createThumbnailPreviewImage((IDiagramModel)o, fPreviewLabel);
                 }
                 else {
-                    fPreviewLabel.setImage(null);
+                    disposePreviewImage();
                 }
             }
         });
@@ -290,7 +291,14 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
         dialog.setText(Messages.SaveArchimateModelAsTemplateWizardPage_11);
         dialog.setFilterExtensions(new String[] { "*" + fTemplateManager.getTemplateFileExtension(), "*.*" } ); //$NON-NLS-1$ //$NON-NLS-2$
+        File file = new File(fFileTextField.getText());
+        dialog.setFileName(file.getName());
+        
+        // Does nothing on macOS 10.15+. On Windows will work after Eclipse 4.21
+        dialog.setOverwrite(false);
+        
         String path = dialog.open();
+        
         if(path != null) {
             // Only Windows adds the extension by default
             if(dialog.getFilterIndex() == 0 && !path.endsWith(ArchimateTemplateManager.ARCHIMATE_TEMPLATE_FILE_EXTENSION)) {
@@ -298,6 +306,7 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
             }
             return new File(path);
         }
+        
         return null;
     }
     
@@ -326,8 +335,9 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
     }
     
     private void disposePreviewImage() {
-        if(fPreviewLabel != null && fPreviewLabel.getImage() != null && !fPreviewLabel.getImage().isDisposed()) {
+        if(fPreviewLabel != null && fPreviewLabel.getImage() != null) {
             fPreviewLabel.getImage().dispose();
+            fPreviewLabel.setImage(null);
         }
     }
     
@@ -335,7 +345,7 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         // Store current folder
         File parentFile = new File(getFileName()).getAbsoluteFile().getParentFile(); // Make sure to use absolute file
         if(parentFile != null) {
-            Preferences.STORE.setValue(PREFS_LAST_FOLDER, parentFile.getAbsolutePath());
+            ArchiPlugin.PREFERENCES.setValue(PREFS_LAST_FOLDER, parentFile.getAbsolutePath());
         }
     }
 

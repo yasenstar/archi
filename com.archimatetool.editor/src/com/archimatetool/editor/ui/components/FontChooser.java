@@ -33,6 +33,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.FontDialog;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.dialogs.PreferencesUtil;
+import org.eclipse.ui.forms.widgets.FormToolkit;
 
 import com.archimatetool.editor.preferences.FontsPreferencePage;
 import com.archimatetool.editor.ui.ColorFactory;
@@ -71,6 +72,11 @@ public class FontChooser extends EventManager {
     private FontData fFontData;
     private RGB fFontRGB;
     
+    public FontChooser(Composite parent, FormToolkit toolkit) {
+        this(parent);
+        toolkit.adapt(fTextButton, true, true);
+        toolkit.adapt(fMenuButton, true, true);
+    }
 
     public FontChooser(Composite parent) {
         fComposite = new Composite(parent, SWT.NULL);
@@ -216,6 +222,7 @@ public class FontChooser extends EventManager {
      */
     public void chooseFont() {
         FontDialog dialog = new FontDialog(getControl().getShell());
+        dialog.setEffectsVisible(false); // Don't allow underline/strikeout on Windows. See https://github.com/archimatetool/archi/issues/851
         dialog.setText(Messages.FontChooser_3);
         dialog.setFontList(new FontData[] { fFontData } );        
         dialog.setRGB(fFontRGB);

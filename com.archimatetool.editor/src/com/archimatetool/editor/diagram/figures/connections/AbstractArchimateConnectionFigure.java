@@ -7,12 +7,14 @@ package com.archimatetool.editor.diagram.figures.connections;
 
 import org.eclipse.draw2d.IFigure;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.figures.ToolTipFigure;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.model.IArchimateRelationship;
-import com.archimatetool.model.IDiagramModelArchimateConnection;
+import com.archimatetool.model.IConnectable;
+import com.archimatetool.model.IDiagramModelArchimateObject;
+import com.archimatetool.model.IJunction;
 import com.archimatetool.model.viewpoints.ViewpointManager;
 
 
@@ -23,12 +25,7 @@ import com.archimatetool.model.viewpoints.ViewpointManager;
  * @author Phillip Beauvoir
  */
 public abstract class AbstractArchimateConnectionFigure
-extends AbstractDiagramConnectionFigure {
-    
-    @Override
-    public IDiagramModelArchimateConnection getModelConnection() {
-        return (IDiagramModelArchimateConnection)super.getModelConnection();
-    }
+extends AbstractDiagramConnectionFigure implements IArchimateConnectionFigure {
     
     @Override
     public void refreshVisuals() {
@@ -38,7 +35,7 @@ extends AbstractDiagramConnectionFigure {
         boolean enabled = true;
 
         // Set Enabled according to current Viewpoint
-        if(Preferences.STORE.getBoolean(IPreferenceConstants.VIEWPOINTS_GHOST_DIAGRAM_ELEMENTS)) {
+        if(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.VIEWPOINTS_GHOST_DIAGRAM_ELEMENTS)) {
             enabled = ViewpointManager.INSTANCE.isAllowedDiagramModelComponent(getModelConnection());
         }
         
@@ -65,7 +62,7 @@ extends AbstractDiagramConnectionFigure {
             return null;
         }
         
-        IArchimateRelationship relation = getModelConnection().getArchimateRelationship();
+        IArchimateRelationship relation = getDiagramModelArchimateConnection().getArchimateRelationship();
         
         String text = ArchiLabelProvider.INSTANCE.getLabel(relation);
         toolTipFigure.setText(text);
@@ -79,4 +76,38 @@ extends AbstractDiagramConnectionFigure {
         return toolTipFigure;
     }
     
+    /**
+     * @return true if the option is set to hide incoming target connection arrows on a Junction
+     */
+    protected boolean usePlainJunctionTargetDecoration() {
+        IConnectable target = getModelConnection().getTarget();
+        
+        if(target instanceof IDiagramModelArchimateObject && ((IDiagramModelArchimateObject)target).getArchimateElement() instanceof IJunction) {
+            return target
+                   .getFeatures()
+                   .getBoolean(IDiagramModelArchimateObject.FEATURE_HIDE_JUNCTION_ARROWS,
+                           IDiagramModelArchimateObject.FEATURE_HIDE_JUNCTION_ARROWS_DEFAULT);
+
+        }
+        
+        return false;
+    }
+    
+    /**
+     * @return true if the option is set to hide outgoing source connection ends on a Junction
+     */
+    protected boolean usePlainJunctionSourceDecoration() {
+        IConnectable source = getModelConnection().getSource();
+        
+        if(source instanceof IDiagramModelArchimateObject && ((IDiagramModelArchimateObject)source).getArchimateElement() instanceof IJunction) {
+            return source
+                   .getFeatures()
+                   .getBoolean(IDiagramModelArchimateObject.FEATURE_HIDE_JUNCTION_ARROWS,
+                           IDiagramModelArchimateObject.FEATURE_HIDE_JUNCTION_ARROWS_DEFAULT);
+
+        }
+        
+        return false;
+    }
+
 }

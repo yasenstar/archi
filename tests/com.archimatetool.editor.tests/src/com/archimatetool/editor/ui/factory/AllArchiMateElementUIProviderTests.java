@@ -15,13 +15,14 @@ import java.util.Collection;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.gef.EditPart;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.factory.elements.ApplicationCollaborationUIProvider;
 import com.archimatetool.editor.ui.factory.elements.ApplicationComponentUIProvider;
 import com.archimatetool.editor.ui.factory.elements.ApplicationEventUIProvider;
@@ -198,34 +199,27 @@ public class AllArchiMateElementUIProviderTests extends AbstractGraphicalObjectU
         }
         
         else {
-            assertEquals(IGraphicalObjectUIProvider.DefaultRectangularSize, getProvider().getDefaultSize());
+            assertEquals(IGraphicalObjectUIProvider.defaultSize(), getProvider().getDefaultSize());
         }
     }
     
-    @Override
     @Test
-    public void testGetUserDefaultSize() {
-        // Junctions
-        if(getProvider() instanceof JunctionUIProvider) {
-            assertEquals(new Dimension(15, 15), getProvider().getUserDefaultSize());
+    public void testGetDefaultSize_UserSet() {
+        if(getProvider() instanceof JunctionUIProvider || getProvider() instanceof GroupingUIProvider) {
+            return;
         }
-        
-        // Grouping
-        else if(getProvider() instanceof GroupingUIProvider) {
-            assertEquals(new Dimension(400, 140), getProvider().getUserDefaultSize());
-        }
-        
-        else {
-            // New value via preferences
-            Preferences.STORE.setValue(IPreferenceConstants.DEFAULT_ARCHIMATE_FIGURE_WIDTH, 150);
-            Preferences.STORE.setValue(IPreferenceConstants.DEFAULT_ARCHIMATE_FIGURE_HEIGHT, 90);
-            assertEquals(new Dimension(150, 90), getProvider().getUserDefaultSize());
 
-            // Default value in preferences
-            Preferences.STORE.setToDefault(IPreferenceConstants.DEFAULT_ARCHIMATE_FIGURE_WIDTH);
-            Preferences.STORE.setToDefault(IPreferenceConstants.DEFAULT_ARCHIMATE_FIGURE_HEIGHT);
-            assertEquals(IGraphicalObjectUIProvider.DefaultRectangularSize, getProvider().getUserDefaultSize());
-        }
+        IPreferenceStore preferenceStore = ArchiPlugin.PREFERENCES;
+        
+        // New value via preferences
+        preferenceStore.setValue(IPreferenceConstants.DEFAULT_ARCHIMATE_FIGURE_WIDTH, 150);
+        preferenceStore.setValue(IPreferenceConstants.DEFAULT_ARCHIMATE_FIGURE_HEIGHT, 90);
+        assertEquals(new Dimension(150, 90), getProvider().getDefaultSize());
+        
+        // Default value in preferences
+        preferenceStore.setToDefault(IPreferenceConstants.DEFAULT_ARCHIMATE_FIGURE_WIDTH);
+        preferenceStore.setToDefault(IPreferenceConstants.DEFAULT_ARCHIMATE_FIGURE_HEIGHT);
+        assertEquals(IGraphicalObjectUIProvider.defaultSize(), getProvider().getDefaultSize());
     }
 
     @Override

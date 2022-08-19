@@ -55,10 +55,6 @@ public class Messages extends NLS {
 
     public static String ColoursPreferencePage_23;
 
-    public static String ColoursPreferencePage_24;
-
-    public static String ColoursPreferencePage_25;
-
     public static String ColoursPreferencePage_3;
 
     public static String ColoursPreferencePage_4;
@@ -205,6 +201,8 @@ public class Messages extends NLS {
 
     public static String DiagramPreferencePage_8;
 
+    public static String DiagramPreferencePage_9;
+
     public static String FontsPreferencePage_0;
 
     public static String FontsPreferencePage_1;
@@ -263,19 +261,35 @@ public class Messages extends NLS {
 
     public static String GeneralPreferencePage_14;
 
+    public static String GeneralPreferencePage_15;
+
     public static String GeneralPreferencePage_16;
 
     public static String GeneralPreferencePage_17;
 
     public static String GeneralPreferencePage_18;
 
+    public static String GeneralPreferencePage_19;
+
     public static String GeneralPreferencePage_2;
+
+    public static String GeneralPreferencePage_21;
+
+    public static String GeneralPreferencePage_22;
+
+    public static String GeneralPreferencePage_3;
+
+    public static String GeneralPreferencePage_4;
 
     public static String GeneralPreferencePage_5;
 
     public static String GeneralPreferencePage_6;
 
     public static String GeneralPreferencePage_7;
+
+    public static String GeneralPreferencePage_8;
+
+    public static String GeneralPreferencePage_9;
 
     static {
         // initialize resource bundle

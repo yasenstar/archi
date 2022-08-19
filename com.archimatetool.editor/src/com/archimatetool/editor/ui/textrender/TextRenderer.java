@@ -17,6 +17,8 @@ import com.archimatetool.model.IDiagramModelGroup;
 import com.archimatetool.model.IDiagramModelNote;
 import com.archimatetool.model.IDiagramModelReference;
 import com.archimatetool.model.IFolder;
+import com.archimatetool.model.IJunction;
+import com.archimatetool.model.util.Logger;
 
 /**
  * Render Text for display in Text controls in diagrams
@@ -41,6 +43,7 @@ public class TextRenderer {
         registerRenderer(new NameRenderer());
         registerRenderer(new DocumentationRenderer());
         registerRenderer(new TypeRenderer());
+        registerRenderer(new SpecializationRenderer());
         
         registerRenderer(new PropertiesRenderer());
 
@@ -48,6 +51,7 @@ public class TextRenderer {
         registerRenderer(new RelationshipRenderer());
         registerRenderer(new ViewpointRenderer());
         
+        registerRenderer(new IfRenderer());
         registerRenderer(new WordWrapRenderer());
     }
     
@@ -103,23 +107,29 @@ public class TextRenderer {
         
         final int MAX_RECURSION = 10; // Max recursion level
         
-        do {
-            // Add to result set
-            resultSet.add(result);
-            
-            // Check for max recursion
-            if(resultSet.size() == MAX_RECURSION) {
-                return "*** Recursion Error in Label Expression ***";
-            }
+        try {
+            do {
+                // Add to result set
+                resultSet.add(result);
+                
+                // Check for max recursion
+                if(resultSet.size() == MAX_RECURSION) {
+                    return "*** Recursion Error in Label Expression ***";
+                }
+    
+                // Iterate through all registered renderers
+                for(ITextRenderer r : renderers) {
+                    result = r.render(object, result);
+                }
+                
+            } while((!resultSet.contains(result)));
+        }
+        catch(Throwable t) { // Catch all errors so that we can continue working in case we can't open a diagram
+            Logger.logError("Error in Label Expression", t);
+            return "*** Error in Label Expression ***";
+        }
 
-            // Iterate through all registered renderers
-            for(ITextRenderer r : renderers) {
-                result = r.render(object, result);
-            }
-            
-        } while((!resultSet.contains(result)));
-
-        return result;
+        return renderEscapedCharacters(result);
     }
 
     /**
@@ -169,7 +179,8 @@ public class TextRenderer {
      * @return true if the object has support for label expressions
      */
     public boolean isSupportedObject(Object object) {
-        return object instanceof IDiagramModelArchimateComponent 
+        return (object instanceof IDiagramModelArchimateComponent &&
+                     !(((IDiagramModelArchimateComponent)object).getArchimateConcept() instanceof IJunction))
                 || object instanceof IDiagramModelNote
                 || object instanceof IDiagramModelGroup
                 || object instanceof IDiagramModelReference
@@ -182,5 +193,12 @@ public class TextRenderer {
      */
     private String renderNewLines(String result) {
         return result.replace("\\n", "\n");
+    }
+    
+    /**
+     * Remove escapement of chars other than newline
+     */
+    private String renderEscapedCharacters(String result) {
+    	return result.replace("\\:", ":").replace("\\\\", "\\");
     }
 }

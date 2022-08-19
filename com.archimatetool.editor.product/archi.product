@@ -1,14 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?pde version="3.5"?>
 
-<product name="Archi" uid="com.archimatetool.editor.product" id="com.archimatetool.editor.product" application="com.archimatetool.editor.app" version="4.8.1.qualifier" useFeatures="true" includeLaunchers="true">
+<product name="Archi" uid="com.archimatetool.editor.product" id="com.archimatetool.editor.product" application="com.archimatetool.editor.app" version="4.10.0.qualifier" useFeatures="true" includeLaunchers="true">
 
    <configIni use="">
    </configIni>
 
    <launcherArgs>
-      <vmArgsMac>-XstartOnFirstThread
+      <programArgs>-cleanConfig
+--launcher.defaultAction
+openFile
+--add-modules=ALL-SYSTEM
+      </programArgs>
+      <vmArgs>-Dosgi.requiredJavaVersion=11
+-Declipse.p2.data.area=@config.dir/.p2
+      </vmArgs>
+      <vmArgsLin>-Dosgi.instance.area=@user.home/.archi4
+-Dosgi.configuration.area=@user.home/.archi4/.config
+-Dorg.eclipse.equinox.p2.reconciler.dropins.directory=%user.home%/.archi4/dropins
+      </vmArgsLin>
+      <vmArgsMac>-Dosgi.instance.area=&quot;@user.home/Library/Application Support/Archi4&quot;
+-Dosgi.configuration.area=&quot;@user.home/Library/Application Support/Archi4/.config&quot;
+-Dorg.eclipse.equinox.p2.reconciler.dropins.directory=&quot;%user.home%/Library/Application Support/Archi4/dropins&quot;
+-XstartOnFirstThread
+-Xdock:icon=../Resources/icon.icns
       </vmArgsMac>
+      <vmArgsWin>-Dosgi.instance.area=@user.home/AppData/Roaming/Archi4
+-Dosgi.configuration.area=@user.home/AppData/Roaming/Archi4/.config
+-Dorg.eclipse.equinox.p2.reconciler.dropins.directory=%user.home%/AppData/Roaming/Archi4/dropins
+      </vmArgsWin>
    </launcherArgs>
 
    <windowImages i16="/com.archimatetool.editor/img/app-16.png" i32="/com.archimatetool.editor/img/app-32.png" i48="/com.archimatetool.editor/img/app-48.png" i64="/com.archimatetool.editor/img/app-64.png" i128="/com.archimatetool.editor/img/app-128.png" i256="/com.archimatetool.editor/img/app-256.png"/>
@@ -31,12 +51,11 @@
    </plugins>
 
    <features>
+      <feature id="com.archimatetool.eclipse.feature"/>
       <feature id="com.archimatetool.editor.feature"/>
+      <feature id="com.archimatetool.gef.feature"/>
       <feature id="org.eclipse.emf.ecore"/>
       <feature id="org.eclipse.emf.common"/>
-      <feature id="org.eclipse.gef"/>
-      <feature id="org.eclipse.draw2d"/>
-      <feature id="org.eclipse.zest"/>
       <feature id="org.eclipse.help"/>
       <feature id="org.eclipse.rcp"/>
       <feature id="org.eclipse.e4.rcp"/>
@@ -45,16 +64,14 @@
       <feature id="org.eclipse.ecf.filetransfer.feature"/>
       <feature id="org.eclipse.ecf.filetransfer.ssl.feature"/>
       <feature id="org.eclipse.ecf.core.ssl.feature"/>
-      <feature id="org.eclipse.equinox.core.feature"/>
       <feature id="org.eclipse.equinox.p2.extras.feature"/>
-      <feature id="org.eclipse.ecf.filetransfer.httpclient45.feature"/>
+      <feature id="org.eclipse.ecf.filetransfer.httpclient5.feature"/>
    </features>
 
    <configurations>
       <plugin id="org.apache.felix.scr" autoStart="true" startLevel="2" />
       <plugin id="org.eclipse.core.runtime" autoStart="true" startLevel="0" />
       <plugin id="org.eclipse.equinox.common" autoStart="true" startLevel="2" />
-      <plugin id="org.eclipse.equinox.ds" autoStart="true" startLevel="2" />
       <plugin id="org.eclipse.equinox.event" autoStart="true" startLevel="2" />
       <plugin id="org.eclipse.equinox.p2.reconciler.dropins" autoStart="true" startLevel="0" />
       <plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="1" />

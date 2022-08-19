@@ -23,8 +23,9 @@ import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.IDiagramModelEditor;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 import com.archimatetool.editor.ui.components.PartListenerAdapter;
 import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.model.IDiagramModelArchimateComponent;
@@ -39,7 +40,7 @@ import com.archimatetool.model.IDiagramModelReference;
  */
 public class TreeSelectionSynchroniser implements ISelectionChangedListener {
 
-    private TreeModelViewer treeViewer;
+    private TreeModelViewer fTreeViewer;
     
     private boolean isSelecting = false;
     private boolean doSync = true; // This can suspend sync without disabling and unregistering listeners
@@ -83,7 +84,7 @@ public class TreeSelectionSynchroniser implements ISelectionChangedListener {
                 
                 // Editor model could be null if model's file was deleted/renamed and app opened
                 if(editor.getModel() != null && doSync()) {
-                    treeViewer.setSelection(new StructuredSelection(editor.getModel()), true);
+                    fTreeViewer.setSelection(new StructuredSelection(editor.getModel()), true);
                 }
                 
                 lastActiveEditor = editor;
@@ -92,17 +93,18 @@ public class TreeSelectionSynchroniser implements ISelectionChangedListener {
     };
 
     TreeSelectionSynchroniser(TreeModelViewer treeViewer) {
-        this.treeViewer = treeViewer;
+        fTreeViewer = treeViewer;
         registerListeners();
-    }
-    
-    public void dispose() {
-        unregisterListeners();
         
-        // Ensure this stuff can be garbage collected
-        treeViewer = null;
-        lastActiveEditor = null;
-        lastSelectionEvent = null;
+        treeViewer.getTree().addDisposeListener((e) -> {
+            unregisterListeners();
+            
+            // Ensure this stuff can be garbage collected
+            fTreeViewer = null;
+            lastActiveEditor = null;
+            lastSelectionEvent = null;
+            partListenerAdapter = null;
+        });
     }
     
     /**
@@ -114,7 +116,7 @@ public class TreeSelectionSynchroniser implements ISelectionChangedListener {
     }
     
     private boolean doSync() {
-        return doSync && Preferences.doLinkView();
+        return doSync && ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.LINK_VIEW);
     }
     
     /**
@@ -177,7 +179,7 @@ public class TreeSelectionSynchroniser implements ISelectionChangedListener {
             }
             
             // Select in tree
-            treeViewer.setSelection(new StructuredSelection(selected), true);
+            fTreeViewer.setSelection(new StructuredSelection(selected), true);
         }
         // Selection from Tree, so select objects in any open Archimate Diagram Editors
         else if(source instanceof TreeViewer) {
@@ -196,7 +198,7 @@ public class TreeSelectionSynchroniser implements ISelectionChangedListener {
         window.getPartService().addPartListener(partListenerAdapter);
      
         // Tree listener
-        treeViewer.addSelectionChangedListener(this);
+        fTreeViewer.addSelectionChangedListener(this);
         
         // Open Editors
         for(IDiagramModelEditor editor : getOpenEditors()) {
@@ -210,7 +212,7 @@ public class TreeSelectionSynchroniser implements ISelectionChangedListener {
         window.getPartService().removePartListener(partListenerAdapter);
      
         // Tree listener
-        treeViewer.removeSelectionChangedListener(this);
+        fTreeViewer.removeSelectionChangedListener(this);
         
         // Open Editors
         for(IDiagramModelEditor editor : getOpenEditors()) {

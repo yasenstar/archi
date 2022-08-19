@@ -6,14 +6,10 @@
 package com.archimatetool.editor.ui.factory.elements;
 
 import org.eclipse.emf.ecore.EClass;
-import org.eclipse.gef.EditPart;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 
-import com.archimatetool.editor.diagram.editparts.ArchimateElementEditPart;
-import com.archimatetool.editor.diagram.figures.elements.CollaborationFigure;
-import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.model.IArchimatePackage;
 
@@ -24,18 +20,13 @@ import com.archimatetool.model.IArchimatePackage;
  * 
  * @author Phillip Beauvoir
  */
-public class ApplicationCollaborationUIProvider extends AbstractArchimateElementUIProvider {
-
+public class ApplicationCollaborationUIProvider extends AbstractCollaborationUIProvider {
+    
     @Override
     public EClass providerFor() {
         return IArchimatePackage.eINSTANCE.getApplicationCollaboration();
     }
     
-    @Override
-    public EditPart createEditPart() {
-        return new ArchimateElementEditPart(CollaborationFigure.class);
-    }
-
     @Override
     public String getDefaultName() {
         return Messages.ApplicationCollaborationUIProvider_0;
@@ -53,6 +44,6 @@ public class ApplicationCollaborationUIProvider extends AbstractArchimateElement
     
     @Override
     public Color getDefaultColor() {
-        return ColorFactory.get(181, 255, 255);
+        return defaultApplicationColor;
     }
 }

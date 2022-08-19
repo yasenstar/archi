@@ -12,9 +12,8 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.utils.PlatformUtils;
 import com.archimatetool.editor.views.tree.TreeModelViewer;
 import com.archimatetool.editor.views.tree.commands.DeleteCommandHandler;
 
@@ -60,19 +59,13 @@ public class DeleteAction extends ViewerAction {
             }
         }
         // Else if preference is set to warn user in all cases
-        else if(Preferences.STORE.getBoolean(IPreferenceConstants.SHOW_WARNING_ON_DELETE_FROM_TREE)) {
+        else if(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.SHOW_WARNING_ON_DELETE_FROM_TREE)) {
             if(!MessageDialog.openQuestion(
                     Display.getDefault().getActiveShell(),
                     Messages.DeleteAction_1,
                     Messages.DeleteAction_3)) {
                         return;
             }
-        }
-        
-        // TODO: Bug on Mac 10.12 and newer - Open dialog does not close straight away
-        // See https://bugs.eclipse.org/bugs/show_bug.cgi?id=527306
-        if(PlatformUtils.isMac()) {
-            while(Display.getCurrent().readAndDispatch());
         }
         
         BusyIndicator.showWhile(null, new Runnable() {

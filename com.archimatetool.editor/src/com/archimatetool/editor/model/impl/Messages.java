@@ -17,8 +17,6 @@ public class Messages extends NLS {
 
     public static String EditorModelManager_10;
 
-    public static String EditorModelManager_11;
-
     public static String EditorModelManager_12;
 
     public static String EditorModelManager_13;

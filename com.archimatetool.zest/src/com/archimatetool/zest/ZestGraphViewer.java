@@ -6,12 +6,17 @@
 package com.archimatetool.zest;
 
 import org.eclipse.draw2d.Viewport;
+import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseWheelListener;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.zest.core.viewers.GraphViewer;
-import org.eclipse.zest.core.widgets.ZestStyles;
+
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.diagram.util.AnimationUtil;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 
 
 
@@ -22,13 +27,38 @@ import org.eclipse.zest.core.widgets.ZestStyles;
  */
 public class ZestGraphViewer extends GraphViewer {
     
+    /**
+     * Application Preferences Listener
+     */
+    private IPropertyChangeListener prefsListener = event -> {
+        if(AnimationUtil.supportsAnimation()) {
+            if(IPreferenceConstants.ANIMATE_VISUALISER_NODES.equals(event.getProperty())) {
+                getGraphControl().setAnimationEnabled(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.ANIMATE_VISUALISER_NODES));
+            }
+            else if(IPreferenceConstants.ANIMATE_VISUALISER_TIME.equals(event.getProperty())) {
+                getGraphControl().setAnimationTime(ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.ANIMATE_VISUALISER_TIME));
+            }
+        }
+    };
+    
     public ZestGraphViewer(Composite composite, int style) {
         super(composite, style);
         setContentProvider(new ZestViewerContentProvider());
         setLabelProvider(new ZestViewerLabelProvider());
         
-        // Don't animate nodes
-        setNodeStyle(ZestStyles.NODES_NO_LAYOUT_ANIMATION);
+        // Animate nodes
+        if(AnimationUtil.supportsAnimation()) {
+            getGraphControl().setAnimationEnabled(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.ANIMATE_VISUALISER_NODES));
+            getGraphControl().setAnimationTime(ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.ANIMATE_VISUALISER_TIME));
+        }
+        
+        // Preference listener
+        ArchiPlugin.PREFERENCES.addPropertyChangeListener(prefsListener);
+        
+        // Un-Preference listener
+        getGraphControl().addDisposeListener(e -> {
+            ArchiPlugin.PREFERENCES.removePropertyChangeListener(prefsListener);
+        });
         
         // Mouse Wheel listener
         getGraphControl().addMouseWheelListener(new MouseWheelListener() {
@@ -57,7 +87,13 @@ public class ZestGraphViewer extends GraphViewer {
                 }
             }
         });
-    }
+        
+        // Set CSS class name for Themes
+        getGraphControl().setData("org.eclipse.e4.ui.css.CssClassName", "ArchiGraph"); //$NON-NLS-1$ //$NON-NLS-2$
+        
+        // Set background color in case theming is disabled
+        getGraphControl().setBackground(new Color(255, 255, 255));
+   }
     
     void doApplyLayout() {
         super.applyLayout();

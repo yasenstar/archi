@@ -29,7 +29,7 @@ implements IPreferenceConstants {
 
     @Override
     public void initializeDefaultPreferences() {
-		IPreferenceStore store = ArchiPlugin.INSTANCE.getPreferenceStore();
+		IPreferenceStore store = ArchiPlugin.PREFERENCES;
 		
 	    // ======================================= Appearance =======================================
 		
@@ -92,6 +92,7 @@ implements IPreferenceConstants {
         store.setDefault(EDIT_NAME_ON_NEW_OBJECT, true);
         store.setDefault(PALETTE_STATE, true);
         store.setDefault(VIEW_TOOLTIPS, true);
+        store.setDefault(SHOW_SPECIALIZATIONS_IN_PALETTE, true);
         
         store.setDefault(DIAGRAM_OBJECT_RESIZE_BEHAVIOUR, 0);
         store.setDefault(DIAGRAM_PASTE_SPECIAL_BEHAVIOR, 0);
@@ -135,7 +136,19 @@ implements IPreferenceConstants {
         // Windows hi-res and Mac Retina use 200 zoom, Linux is 100
         store.setDefault(SCALE_IMAGE_EXPORT, (!PlatformUtils.isLinux() && ImageFactory.getDeviceZoom() > 100) ? true : false);
         
+        // Animation
+        store.setDefault(ANIMATE_VIEW, false);
+        store.setDefault(ANIMATION_VIEW_TIME, 200);
+        store.setDefault(ANIMATE_VISUALISER_NODES, false);
+        store.setDefault(ANIMATE_VISUALISER_TIME, 400);
         
+        // Edge Browser
+        store.setDefault(EDGE_BROWSER, false);
+        
+        // Hints Browser
+        store.setDefault(HINTS_BROWSER_JS_ENABLED, false);
+        store.setDefault(HINTS_BROWSER_EXTERNAL_HOSTS_ENABLED, false);
+
         // ======================================= Internal =======================================
         
         store.setDefault(GRID_VISIBLE, false);

@@ -20,15 +20,14 @@ import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.actions.DeleteFromModelAction;
-import com.archimatetool.editor.diagram.actions.FindReplaceAction;
 import com.archimatetool.editor.diagram.actions.GenerateViewAction;
 import com.archimatetool.editor.diagram.actions.ViewpointAction;
 import com.archimatetool.editor.diagram.dnd.ArchimateDiagramTransferDropTargetListener;
 import com.archimatetool.editor.diagram.editparts.ArchimateDiagramEditPartFactory;
 import com.archimatetool.editor.model.DiagramModelUtils;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.ui.findreplace.IFindReplaceProvider;
 import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateDiagramModel;
 import com.archimatetool.model.IArchimatePackage;
@@ -46,22 +45,15 @@ import com.archimatetool.model.viewpoints.ViewpointManager;
 public class ArchimateDiagramEditor extends AbstractDiagramEditor
 implements IArchimateDiagramEditor {
     
-    /**
-     * Palette
-     */
-    private ArchimateDiagramEditorPalette fPalette;
-    
-    /**
-     * Find/Replace Provider
-     */
-    private DiagramEditorFindReplaceProvider fFindReplaceProvider;
-    
-    
     @Override
     protected void applicationPreferencesChanged(PropertyChangeEvent event) {
         // Hide/Show Palette elements on Viewpoint
         if(IPreferenceConstants.VIEWPOINTS_HIDE_PALETTE_ELEMENTS == event.getProperty()) {
-            setPaletteViewpoint();
+            getPaletteRoot().updateViewpoint();
+        }
+        // Hide/Show Specialization Palette elements
+        else if(IPreferenceConstants.SHOW_SPECIALIZATIONS_IN_PALETTE == event.getProperty()) {
+            getPaletteRoot().updateSpecializations();
         }
         // Hide/Show Diagram Elements on Viewpoint
         else if(IPreferenceConstants.VIEWPOINTS_GHOST_DIAGRAM_ELEMENTS == event.getProperty()) {
@@ -76,15 +68,12 @@ implements IArchimateDiagramEditor {
      * Set Viewpoint to current Viewpoint in model
      */
     protected void setViewpoint() {
-        setPaletteViewpoint();
-        getGraphicalViewer().setContents(getModel()); // refresh the model contents
-    }
-    
-    /**
-     * Set Palette to current Viewpoint in model
-     */
-    protected void setPaletteViewpoint() {
-        getPaletteRoot().setViewpoint(ViewpointManager.INSTANCE.getViewpoint(getModel().getViewpoint()));
+        getPaletteRoot().updateViewpoint();
+        
+        // If the preference is to hide elements then refresh the model contents
+        if(!ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.VIEWPOINTS_GHOST_DIAGRAM_ELEMENTS)) {
+            getGraphicalViewer().setContents(getModel()); 
+        }
     }
     
     @Override
@@ -95,11 +84,10 @@ implements IArchimateDiagramEditor {
     
     @Override
     public ArchimateDiagramEditorPalette getPaletteRoot() {
-        if(fPalette == null) {
-            fPalette = new ArchimateDiagramEditorPalette();
-            setPaletteViewpoint();
+        if(fPaletteRoot == null) {
+            fPaletteRoot = new ArchimateDiagramEditorPalette(getModel());
         }
-        return fPalette;
+        return (ArchimateDiagramEditorPalette)fPaletteRoot;
     }
 
     @Override
@@ -189,10 +177,6 @@ implements IArchimateDiagramEditor {
             registry.registerAction(action);
         }
         
-        // Find/Replace
-        action = new FindReplaceAction(getEditorSite().getWorkbenchWindow());
-        registry.registerAction(action);
-        
         // Generate View For
         action = new GenerateViewAction(this);
         registry.registerAction(action);
@@ -207,28 +191,6 @@ implements IArchimateDiagramEditor {
         }
         else {
             super.notifyChanged(msg);
-        }
-    }
-    
-    @SuppressWarnings("rawtypes")
-    @Override
-    public Object getAdapter(Class adapter) {
-        // Find/Replace Provider
-        if(adapter == IFindReplaceProvider.class) {
-            if(fFindReplaceProvider == null) {
-                fFindReplaceProvider = new DiagramEditorFindReplaceProvider(getGraphicalViewer());
-            }
-            return fFindReplaceProvider;
-        }
-
-        return super.getAdapter(adapter);
-    }
-    
-    @Override
-    public void dispose() {
-        super.dispose();
-        if(fPalette != null) {
-            fPalette.dispose();
         }
     }
     

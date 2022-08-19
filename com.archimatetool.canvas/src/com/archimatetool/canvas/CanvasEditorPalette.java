@@ -5,31 +5,25 @@
  */
 package com.archimatetool.canvas;
 
-import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.emf.ecore.EClass;
-import org.eclipse.gef.palette.CombinedTemplateCreationEntry;
 import org.eclipse.gef.palette.ConnectionCreationToolEntry;
 import org.eclipse.gef.palette.PaletteContainer;
 import org.eclipse.gef.palette.PaletteEntry;
 import org.eclipse.gef.palette.PaletteGroup;
 import org.eclipse.gef.palette.PaletteSeparator;
-import org.eclipse.gef.palette.PaletteStack;
-import org.eclipse.gef.palette.PaletteToolbar;
-import org.eclipse.gef.palette.PanningSelectionToolEntry;
-import org.eclipse.gef.palette.ToolEntry;
 import org.eclipse.gef.tools.AbstractTool;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 
 import com.archimatetool.canvas.model.ICanvasPackage;
 import com.archimatetool.editor.diagram.AbstractPaletteRoot;
-import com.archimatetool.editor.diagram.tools.FormatPainterToolEntry;
-import com.archimatetool.editor.diagram.tools.PanningSelectionExtendedTool;
-import com.archimatetool.editor.ui.ColorFactory;
+import com.archimatetool.editor.diagram.tools.ExtCombinedTemplateCreationEntry;
+import com.archimatetool.editor.diagram.tools.ExtConnectionCreationToolEntry;
 import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.model.IDiagramModelConnection;
 
@@ -42,49 +36,20 @@ import com.archimatetool.model.IDiagramModelConnection;
  */
 public class CanvasEditorPalette extends AbstractPaletteRoot {
     
-    private FormatPainterToolEntry formatPainterEntry;
-    
     public CanvasEditorPalette() {
-        createControlsGroup();
-        add(new PaletteSeparator("")); //$NON-NLS-1$
+        add(createToolsGroup());
         
         createElementsGroup();
-        add(new PaletteSeparator("")); //$NON-NLS-1$
+        add(new PaletteSeparator());
 
         createStickiesGroup();
-        add(new PaletteSeparator("")); //$NON-NLS-1$
     }
 
-    /**
-     * Create a Group of Controls
-     */
-    private PaletteContainer createControlsGroup() {
-        PaletteContainer group = new PaletteToolbar(Messages.CanvasEditorPalette_0);
-        add(group);
-        
-        // The selection tool
-        ToolEntry tool = new PanningSelectionToolEntry();
-        tool.setToolClass(PanningSelectionExtendedTool.class);
-        group.add(tool);
-
-        // Use selection tool as default entry
-        setDefaultEntry(tool);
-
-        PaletteStack stack = createMarqueeSelectionStack();
-        group.add(stack);
-        
-        // Format Painter
-        formatPainterEntry = new FormatPainterToolEntry();
-        group.add(formatPainterEntry);
-
-        return group;
-    }
-    
     private PaletteContainer createElementsGroup() {
         PaletteContainer group = new PaletteGroup(Messages.CanvasEditorPalette_1);
         add(group);
         
-        PaletteEntry entry = new CombinedTemplateCreationEntry(
+        PaletteEntry entry = new ExtCombinedTemplateCreationEntry(
                 Messages.CanvasEditorPalette_2,
                 null,
                 new CanvasModelFactory(ICanvasPackage.eINSTANCE.getCanvasModelBlock()),
@@ -92,7 +57,7 @@ public class CanvasEditorPalette extends AbstractPaletteRoot {
                 ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_BLOCK));
         group.add(entry);
         
-        entry = new CombinedTemplateCreationEntry(
+        entry = new ExtCombinedTemplateCreationEntry(
                 Messages.CanvasEditorPalette_3,
                 null,
                 new CanvasModelFactory(ICanvasPackage.eINSTANCE.getCanvasModelImage()),
@@ -137,28 +102,28 @@ public class CanvasEditorPalette extends AbstractPaletteRoot {
     }
 
     private PaletteContainer createStickiesGroup() {
-        PaletteContainer group = new PaletteToolbar(Messages.CanvasEditorPalette_8);
+        PaletteContainer group = new PaletteGroup(Messages.CanvasEditorPalette_8);
         add(group);
         
         // Sticky Notes
-        group.add(createStickyEntry(ColorConstants.white));
-        group.add(createStickyEntry(ColorFactory.get(255, 255, 149)));
-        group.add(createStickyEntry(ColorFactory.get(213, 255, 149)));
-        group.add(createStickyEntry(ColorFactory.get(198, 249, 198)));
-        group.add(createStickyEntry(ColorFactory.get(198, 249, 247)));
-        group.add(createStickyEntry(ColorFactory.get(198, 216, 250)));
-        group.add(createStickyEntry(ColorFactory.get(196, 196, 248)));
-        group.add(createStickyEntry(ColorFactory.get(238, 200, 251)));
-        group.add(createStickyEntry(ColorFactory.get(247, 196, 196)));
-        group.add(createStickyEntry(ColorFactory.get(248, 196, 145)));
-        group.add(createStickyEntry(ColorFactory.get(255, 160, 147)));
+        group.add(createStickyEntry(255, 255, 255));
+        group.add(createStickyEntry(255, 255, 149));
+        group.add(createStickyEntry(213, 255, 149));
+        group.add(createStickyEntry(198, 249, 198));
+        group.add(createStickyEntry(198, 249, 247));
+        group.add(createStickyEntry(198, 216, 250));
+        group.add(createStickyEntry(196, 196, 248));
+        group.add(createStickyEntry(238, 200, 251));
+        group.add(createStickyEntry(247, 196, 196));
+        group.add(createStickyEntry(248, 196, 145));
+        group.add(createStickyEntry(255, 160, 147));
         
         return group;
     }
     
     private ConnectionCreationToolEntry createConnectionCreationToolEntry(EClass eClass, int type, String name, String description,
                                                                           ImageDescriptor icon) {
-        ConnectionCreationToolEntry entry = new ConnectionCreationToolEntry(
+        ConnectionCreationToolEntry entry = new ExtConnectionCreationToolEntry(
                 name,
                 description,
                 new CanvasModelFactory(eClass, type),
@@ -170,14 +135,14 @@ public class CanvasEditorPalette extends AbstractPaletteRoot {
         return entry;
     }
 
-    private PaletteEntry createStickyEntry(Color color) {
+    private PaletteEntry createStickyEntry(int r, int g, int b) {
         ImageDescriptor id = new ImageDescriptor() {
             @Override
             public ImageData getImageData(int zoom) {
                 Image image = new Image(Display.getCurrent(), 16, 16);
                 
                 GC gc = new GC(image);
-                gc.setBackground(color);
+                gc.setBackground(new Color(r, g, b));
                 gc.fillRectangle(0, 0, 15, 15);
                 gc.drawRectangle(0, 0, 15, 15);
                 gc.dispose();
@@ -189,15 +154,11 @@ public class CanvasEditorPalette extends AbstractPaletteRoot {
            }
         };
         
-        return new CombinedTemplateCreationEntry(
+        return new ExtCombinedTemplateCreationEntry(
                 Messages.CanvasEditorPalette_9,
                 null,
-                new CanvasModelFactory(ICanvasPackage.eINSTANCE.getCanvasModelSticky(), color),
+                new CanvasModelFactory(ICanvasPackage.eINSTANCE.getCanvasModelSticky(), new RGB(r, g, b)),
                 id,
                 id);
-    }
-    
-    void dispose() {
-        formatPainterEntry.dispose();
     }
 }

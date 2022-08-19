@@ -5,13 +5,11 @@
  */
 package com.archimatetool.editor.preferences;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Map.Entry;
 
 import org.eclipse.emf.ecore.EClass;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferencePage;
@@ -26,7 +24,6 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
-import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -53,6 +50,7 @@ import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.ui.ImageFactory;
+import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.editor.ui.components.CustomColorDialog;
 import com.archimatetool.editor.ui.factory.model.FolderUIProvider;
 import com.archimatetool.editor.utils.PlatformUtils;
@@ -106,7 +104,7 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
     }
     
 	public ColoursPreferencePage() {
-		setPreferenceStore(ArchiPlugin.INSTANCE.getPreferenceStore());
+		setPreferenceStore(ArchiPlugin.PREFERENCES);
 	}
 	
     @Override
@@ -132,6 +130,9 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         // Tree
         fTreeViewer = new TreeViewer(client);
         GridDataFactory.create(GridData.FILL_BOTH).hint(SWT.DEFAULT, 200).applyTo(fTreeViewer.getTree());
+        
+        // Mac Silicon Item height
+        UIUtils.fixMacSiliconItemHeight(fTreeViewer.getTree());
         
         // Tree Double-click listener
         fTreeViewer.addDoubleClickListener(new IDoubleClickListener() {
@@ -491,12 +492,6 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
             return;
         }
         
-        // Dispose of old one
-        Color oldColor = fColorsCache.get(object);
-        if(oldColor != null) {
-            oldColor.dispose();
-        }
-        
         fColorsCache.put(object, new Color(Display.getCurrent(), rgb));
         fImageRegistry.remove(getColorKey(object)); // remove from image registry so we can generate a new image
         fTreeViewer.update(object, null);
@@ -507,10 +502,6 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
      * Reset the color cache to user or inbuilt defaults
      */
     private void resetColorsCache(boolean useInbuiltDefaults) {
-        for(Entry<Object, Color> entry : fColorsCache.entrySet()) {
-            entry.getValue().dispose();
-        }
-
         fColorsCache.clear();
         
         for(EClass eClass : ArchimateModelUtils.getAllArchimateClasses()) {
@@ -644,22 +635,15 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
         dialog.setText(Messages.ColoursPreferencePage_23);
         dialog.setFileName("ArchiColours.prefs"); //$NON-NLS-1$
+        
+        // Set to true for consistency on all OSs
+        dialog.setOverwrite(true);
+        
         String path = dialog.open();
         if(path == null) {
             return;
         }
         
-        // Make sure the file does not already exist
-        File file = new File(path);
-        if(file.exists()) {
-            boolean result = MessageDialog.openQuestion(getShell(),
-                    Messages.ColoursPreferencePage_24,
-                    NLS.bind(Messages.ColoursPreferencePage_25, file));
-            if(!result) {
-                return;
-            }
-        }
-
         PreferenceStore store = new PreferenceStore(path);
         saveColors(store, false);
         store.save();
@@ -718,10 +702,6 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
     public void dispose() {
         super.dispose();
         
-        for(Entry<Object, Color> entry : fColorsCache.entrySet()) {
-            entry.getValue().dispose();
-        }
-
         fColorsCache.clear();
         fColorsCache = null;
         

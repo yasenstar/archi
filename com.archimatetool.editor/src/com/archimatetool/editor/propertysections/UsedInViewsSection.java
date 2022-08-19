@@ -21,10 +21,10 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.IDiagramModelEditor;
 import com.archimatetool.editor.model.DiagramModelUtils;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.editor.ui.services.EditorManager;
@@ -78,6 +78,9 @@ public class UsedInViewsSection extends AbstractECorePropertySection {
         
         // Font
         UIUtils.setFontFromPreferences(fTableViewer.getTable(), IPreferenceConstants.ANALYSIS_TABLE_FONT, true);
+        
+        // Mac Silicon Item height
+        UIUtils.fixMacSiliconItemHeight(fTableViewer.getTable());
 
         // Column
         TableViewerColumn column = new TableViewerColumn(fTableViewer, SWT.NONE, 0);
@@ -110,7 +113,7 @@ public class UsedInViewsSection extends AbstractECorePropertySection {
                 IDiagramModel dm = (IDiagramModel)element;
                 
                 // Display label according to ancestor folder's label expression, if present and preference is set
-                if(Preferences.STORE.getBoolean(IPreferenceConstants.USE_LABEL_EXPRESSIONS_IN_ANALYSIS_TABLE)) {
+                if(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.USE_LABEL_EXPRESSIONS_IN_ANALYSIS_TABLE)) {
                     String expression = TextRenderer.getDefault().getFormatExpressionFromAncestorFolder(dm);
                     if(expression != null) {
                         String text = StringUtils.normaliseNewLineCharacters(TextRenderer.getDefault().renderWithExpression(dm, expression));

@@ -11,7 +11,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 import com.archimatetool.editor.utils.PlatformUtils;
 import com.archimatetool.editor.utils.StringUtils;
 
@@ -43,7 +44,7 @@ public final class FontFactory {
     
     /**
      * @param fontName
-     * @return A FOnt for the fontName or the default user font if null or exception occurs
+     * @return A Font for the fontName or the default user font if null or exception occurs
      */
     public static Font get(String fontName) {
         if(fontName == null) {
@@ -77,7 +78,7 @@ public final class FontFactory {
         // We don't have it
         if(!FontRegistry.hasValueFor(DEFAULT_VIEW_FONT_NAME)) {
             // So check user prefs...
-            String fontDetails = Preferences.getDefaultViewFont();
+            String fontDetails = ArchiPlugin.PREFERENCES.getString(IPreferenceConstants.DEFAULT_VIEW_FONT);
             if(StringUtils.isSet(fontDetails)) {
                 try {
                     // Put font details from user prefs
@@ -103,7 +104,7 @@ public final class FontFactory {
         FontRegistry.put(DEFAULT_VIEW_FONT_NAME, new FontData[] { fd });
 
         // Then set value as this will send property change
-        Preferences.setDefaultViewFont(fd.toString());
+        ArchiPlugin.PREFERENCES.setValue(IPreferenceConstants.DEFAULT_VIEW_FONT, fd.toString());
     }
     
     /**
@@ -164,7 +165,9 @@ public final class FontFactory {
      * @return The italic variant of the given font
      */
     public static Font getItalic(Font font) {
-        return FontRegistry.getItalic(font.getFontData()[0].toString());
+        String fontName = font.getFontData()[0].toString();
+        get(fontName); // Have to ensure base font is registered
+        return FontRegistry.getItalic(fontName);
     }
     
     /**
@@ -172,6 +175,8 @@ public final class FontFactory {
      * @return The bold variant of the given font
      */
     public static Font getBold(Font font) {
-        return FontRegistry.getBold(font.getFontData()[0].toString());
+        String fontName = font.getFontData()[0].toString();
+        get(fontName); // Have to ensure base font is registered
+        return FontRegistry.getBold(fontName);
     }
 }

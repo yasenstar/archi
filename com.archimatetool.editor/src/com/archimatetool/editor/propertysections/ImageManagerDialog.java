@@ -56,11 +56,9 @@ import com.archimatetool.editor.model.IArchiveManager;
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.editor.ui.components.ExtendedTitleAreaDialog;
-import com.archimatetool.editor.utils.PlatformUtils;
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IArchimateModelObject;
-import com.archimatetool.model.IDiagramModelImageProvider;
 import com.archimatetool.model.INameable;
 
 
@@ -89,16 +87,20 @@ public class ImageManagerDialog extends ExtendedTitleAreaDialog {
     private String fUserSelectedImagePath;
     private File fUserSelectedFile;
     
-    private IDiagramModelImageProvider fFirstSelected;
-    
     private Map<String, Image> fImageCache = new HashMap<String, Image>();
 
-    public ImageManagerDialog(Shell parentShell, IDiagramModelImageProvider firstSelected) {
+    public ImageManagerDialog(Shell parentShell) {
         super(parentShell, "ImageManagerDialog"); //$NON-NLS-1$
         setTitleImage(IArchiImages.ImageFactory.getImage(IArchiImages.ECLIPSE_IMAGE_NEW_WIZARD));
         setShellStyle(getShellStyle() | SWT.RESIZE);
-        
-        fFirstSelected = firstSelected;
+    }
+    
+    /**
+     * Set the initial selected model and image path, if any
+     */
+    public void setSelected(IArchimateModel model, String imagePath) {
+        fUserSelectedModel = model;
+        fUserSelectedImagePath = imagePath;
     }
 
     @Override
@@ -198,9 +200,6 @@ public class ImageManagerDialog extends ExtendedTitleAreaDialog {
         fScale = new Scale(galleryComposite, SWT.HORIZONTAL);
         gd = new GridData(SWT.END, SWT.NONE, false, false);
         gd.widthHint = 120;
-        if(PlatformUtils.isMac()) { // Mac clips height of slider
-            gd.heightHint = 18;
-        }
         fScale.setLayoutData(gd);
         fScale.setMinimum(MIN_GALLERY_ITEM_SIZE);
         fScale.setMaximum(MAX_GALLERY_ITEM_SIZE);
@@ -254,36 +253,26 @@ public class ImageManagerDialog extends ExtendedTitleAreaDialog {
 
         sash.setWeights(new int[] { 30, 70 });
         
-        /*
-         * Select the initial model and image if there is one
-         */
-        if(fFirstSelected != null) {
-            // Selected model
-            fUserSelectedModel = ((IArchimateModelObject)fFirstSelected).getArchimateModel();
-            // Image path
-            fUserSelectedImagePath = fFirstSelected.getImagePath();
-            
-            // If we have this model in the table, select it
-            if(((ModelsViewerContentProvider)fModelsViewer.getContentProvider()).getModels().contains(fUserSelectedModel)) {
-                fModelsViewer.setSelection(new StructuredSelection(fUserSelectedModel));
-                
-                // Make selection of image path if it's set
-                if(fUserSelectedImagePath != null) {
-                    for(GalleryItem item : fGalleryRoot.getItems()) {
-                        String imagePath = (String)item.getData("imagepath"); //$NON-NLS-1$
-                        if(imagePath != null && fUserSelectedImagePath.equals(imagePath)) {
-                            fGallery.setSelection(new GalleryItem[] { item });
-                            break;
-                        }
+        // If we have this model in the table, select it
+        if(fUserSelectedModel != null && ((ModelsViewerContentProvider)fModelsViewer.getContentProvider()).getModels().contains(fUserSelectedModel)) {
+            fModelsViewer.setSelection(new StructuredSelection(fUserSelectedModel));
+
+            // Make selection of image path if it's set
+            if(fUserSelectedImagePath != null) {
+                for(GalleryItem item : fGalleryRoot.getItems()) {
+                    String imagePath = (String)item.getData("imagepath"); //$NON-NLS-1$
+                    if(imagePath != null && fUserSelectedImagePath.equals(imagePath)) {
+                        fGallery.setSelection(new GalleryItem[] { item });
+                        break;
                     }
                 }
             }
-            // Else select the first model in the table, if there is one
-            else {
-                Object element = fModelsViewer.getElementAt(0);
-                if(element != null) {
-                    fModelsViewer.setSelection(new StructuredSelection(element), true);
-                }
+        }
+        // Else select the first model in the table, if there is one
+        else {
+            Object element = fModelsViewer.getElementAt(0);
+            if(element != null) {
+                fModelsViewer.setSelection(new StructuredSelection(element), true);
             }
         }
         
@@ -310,6 +299,8 @@ public class ImageManagerDialog extends ExtendedTitleAreaDialog {
                 
                 for(String path : archiveManager.getImagePaths()) {
                     Image thumbnail = fImageCache.get(path);
+                    
+                    // Create image and cache it
                     if(thumbnail == null) {
                         try {
                             thumbnail = archiveManager.createImage(path);
@@ -323,10 +314,12 @@ public class ImageManagerDialog extends ExtendedTitleAreaDialog {
                         }
                     }
                     
-                    GalleryItem item = new GalleryItem(fGalleryRoot, SWT.NONE);
-                    item.setImage(thumbnail);
-                    item.setData("imagepath", path); //$NON-NLS-1$
-                    item.setData("model", model); //$NON-NLS-1$
+                    if(thumbnail != null) {
+                        GalleryItem item = new GalleryItem(fGalleryRoot, SWT.NONE);
+                        item.setImage(thumbnail);
+                        item.setData("imagepath", path); //$NON-NLS-1$
+                        item.setData("model", model); //$NON-NLS-1$
+                    }
                 }
                 
                 fGallery.redraw(); // at some scale settings this is needed
@@ -391,6 +384,10 @@ public class ImageManagerDialog extends ExtendedTitleAreaDialog {
     private class ModelsViewer extends TableViewer {
         public ModelsViewer(Composite parent) {
             super(parent, SWT.FULL_SELECTION);
+            
+            // Mac Silicon Item height
+            UIUtils.fixMacSiliconItemHeight(getTable());
+            
             setColumns();
             setContentProvider(new ModelsViewerContentProvider());
             setLabelProvider(new ModelsViewerLabelProvider());

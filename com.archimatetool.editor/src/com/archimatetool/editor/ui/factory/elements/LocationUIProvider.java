@@ -5,6 +5,7 @@
  */
 package com.archimatetool.editor.ui.factory.elements;
 
+import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.gef.EditPart;
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -13,7 +14,6 @@ import org.eclipse.swt.graphics.Image;
 
 import com.archimatetool.editor.diagram.editparts.ArchimateElementEditPart;
 import com.archimatetool.editor.diagram.figures.elements.LocationFigure;
-import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.model.IArchimatePackage;
 
@@ -25,6 +25,8 @@ import com.archimatetool.model.IArchimatePackage;
  * @author Phillip Beauvoir
  */
 public class LocationUIProvider extends AbstractArchimateElementUIProvider {
+    
+    private static Color defaultColor = new Color(251, 184, 117);
 
     @Override
     public EClass providerFor() {
@@ -38,7 +40,7 @@ public class LocationUIProvider extends AbstractArchimateElementUIProvider {
 
     @Override
     public Color getDefaultColor() {
-        return ColorFactory.get(251, 184, 117);
+        return defaultColor;
     }
 
     @Override
@@ -54,5 +56,11 @@ public class LocationUIProvider extends AbstractArchimateElementUIProvider {
     @Override
     public ImageDescriptor getImageDescriptor() {
         return IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_LOCATION);
+    }
+    
+    @Override
+    protected Dimension getDefaultSizeForFigureType(int figureType) {
+        return super.getDefaultSizeForFigureType(figureType);
+        //return figureType == 1 ? getDefaultSquareSize() : super.getDefaultSizeForFigureType(figureType);
     }
 }

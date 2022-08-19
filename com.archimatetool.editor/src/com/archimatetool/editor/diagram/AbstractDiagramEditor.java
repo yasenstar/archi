@@ -15,14 +15,10 @@ import java.util.Set;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.draw2d.Graphics;
-import org.eclipse.draw2d.GraphicsSource;
 import org.eclipse.draw2d.IFigure;
-import org.eclipse.draw2d.LightweightSystem;
 import org.eclipse.draw2d.PositionConstants;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
-import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.gef.DefaultEditDomain;
 import org.eclipse.gef.EditPart;
@@ -30,21 +26,25 @@ import org.eclipse.gef.GraphicalEditPart;
 import org.eclipse.gef.GraphicalViewer;
 import org.eclipse.gef.MouseWheelHandler;
 import org.eclipse.gef.MouseWheelZoomHandler;
+import org.eclipse.gef.RequestConstants;
 import org.eclipse.gef.SnapToGeometry;
 import org.eclipse.gef.SnapToGrid;
 import org.eclipse.gef.commands.CommandStack;
 import org.eclipse.gef.dnd.TemplateTransferDragSourceListener;
+import org.eclipse.gef.editparts.ScalableFreeformRootEditPart;
 import org.eclipse.gef.editparts.ZoomManager;
 import org.eclipse.gef.internal.InternalGEFPlugin;
 import org.eclipse.gef.palette.PaletteListener;
 import org.eclipse.gef.palette.ToolEntry;
 import org.eclipse.gef.requests.CreationFactory;
+import org.eclipse.gef.requests.SelectionRequest;
 import org.eclipse.gef.tools.AbstractTool;
 import org.eclipse.gef.tools.CreationTool;
 import org.eclipse.gef.ui.actions.ActionRegistry;
 import org.eclipse.gef.ui.actions.AlignmentAction;
 import org.eclipse.gef.ui.actions.DirectEditAction;
 import org.eclipse.gef.ui.actions.MatchHeightAction;
+import org.eclipse.gef.ui.actions.MatchSizeAction;
 import org.eclipse.gef.ui.actions.MatchWidthAction;
 import org.eclipse.gef.ui.actions.UpdateAction;
 import org.eclipse.gef.ui.actions.ZoomInAction;
@@ -55,11 +55,11 @@ import org.eclipse.gef.ui.palette.PaletteViewerPreferences;
 import org.eclipse.gef.ui.palette.PaletteViewerProvider;
 import org.eclipse.gef.ui.parts.GraphicalEditorWithFlyoutPalette;
 import org.eclipse.gef.ui.parts.GraphicalViewerKeyHandler;
-import org.eclipse.gef.ui.parts.ScrollingGraphicalViewer;
 import org.eclipse.help.IContextProvider;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IStatusLineManager;
 import org.eclipse.jface.commands.ActionHandler;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
@@ -72,10 +72,10 @@ import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseTrackAdapter;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorInput;
@@ -102,6 +102,7 @@ import com.archimatetool.editor.diagram.actions.DefaultEditPartSizeAction;
 import com.archimatetool.editor.diagram.actions.ExportAsImageAction;
 import com.archimatetool.editor.diagram.actions.ExportAsImageToClipboardAction;
 import com.archimatetool.editor.diagram.actions.FillColorAction;
+import com.archimatetool.editor.diagram.actions.FindReplaceAction;
 import com.archimatetool.editor.diagram.actions.FontAction;
 import com.archimatetool.editor.diagram.actions.FontColorAction;
 import com.archimatetool.editor.diagram.actions.FullScreenAction;
@@ -125,15 +126,14 @@ import com.archimatetool.editor.diagram.actions.ToggleGridVisibleAction;
 import com.archimatetool.editor.diagram.actions.ToggleSnapToAlignmentGuidesAction;
 import com.archimatetool.editor.diagram.actions.ZoomNormalAction;
 import com.archimatetool.editor.diagram.dnd.PaletteTemplateTransferDropTargetListener;
-import com.archimatetool.editor.diagram.editparts.ExtendedScalableFreeformRootEditPart;
 import com.archimatetool.editor.diagram.figures.ITextFigure;
 import com.archimatetool.editor.diagram.tools.FormatPainterInfo;
 import com.archimatetool.editor.diagram.tools.FormatPainterToolEntry;
 import com.archimatetool.editor.diagram.tools.MouseWheelHorizontalScrollHandler;
 import com.archimatetool.editor.model.DiagramModelUtils;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
+import com.archimatetool.editor.ui.findreplace.IFindReplaceProvider;
 import com.archimatetool.editor.ui.services.ComponentSelectionManager;
 import com.archimatetool.editor.ui.services.EditorManager;
 import com.archimatetool.editor.ui.textrender.TextRenderer;
@@ -183,6 +183,16 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
      * Listen to ecore changes for model/view name change
      */
     private LightweightAdapter eCoreAdapter = new LightweightAdapter(this::notifyChanged);
+    
+    /**
+     * Find/Replace Provider
+     */
+    private DiagramEditorFindReplaceProvider fFindReplaceProvider;
+    
+    /**
+     * Palette Root
+     */
+    protected AbstractPaletteRoot fPaletteRoot;
     
     /**
      * Application Preference changed
@@ -246,7 +256,7 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         setPartName(input.getName());
 
         // Listen to App Prefs changes
-        Preferences.STORE.addPropertyChangeListener(appPreferencesListener);
+        ArchiPlugin.PREFERENCES.addPropertyChangeListener(appPreferencesListener);
     }
 
     @Override
@@ -306,7 +316,7 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
      * Create the Root Edit Part
      */
     protected void createRootEditPart(GraphicalViewer viewer) {
-        viewer.setRootEditPart(new ExtendedScalableFreeformRootEditPart());
+        viewer.setRootEditPart(new ScalableFreeformRootEditPart(false));
     }
     
     @Override
@@ -337,66 +347,29 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         
         // Listen to selections
         hookSelectionListener();
-    }
-    
-    @Override
-    protected void createGraphicalViewer(Composite parent) {
-        // NOTE from Phillipus - the bug only seems to affect Windows and only when dragging from
-        // a source that isn't the diagram (Model Tree, Table, File, etc).
-        // I can't remember where the following hack came from, as I didn't devise it.
-        if(!PlatformUtils.isWindows()) {
-            super.createGraphicalViewer(parent);
-            return;
+        
+        // If on Wayland double-click open requests are not forwarded so hook in here
+        if(PlatformUtils.isLinuxWayland()) {
+            viewer.getControl().addListener(SWT.MouseDoubleClick, event -> {
+                EditPart editPart = viewer.findObjectAt(new Point(event.x, event.y));
+                if(editPart != null ) {
+                    SelectionRequest request = new SelectionRequest();
+                    request.setType(RequestConstants.REQ_OPEN);
+                    request.setLocation(new Point(event.x, event.y));
+                    request.setModifiers(event.stateMask);
+                    request.setLastButtonPressed(event.button);
+                    editPart.performRequest(request);
+                }
+            });
         }
 
-        // Hack: specialize the GraphicsSource to avoid calling the
-        // Canvas#update() method in the GraphicsSource#getGraphics(Rectangle) method.
-        // This hack is needed to avoid SWT/GEF bug 137786
-        // (see https://bugs.eclipse.org/bugs/show_bug.cgi?id=137786) where drag over
-        // feedback (ie the drag feedback provided by the drag source) and drag under
-        // feedback (ie the feedback provided by the drop target) interfere with each
-        // other, causing flickering and more importantly ugly graphical artifacts.
-
-        // In order to be able to specialize the GraphicsSource, we need to specialize
-        // the LightWeightSystem, and to do that we need in turn to specialize the GraphicalViewer.
-        final GraphicalViewer viewer = new ScrollingGraphicalViewer() {
-            @Override
-            protected LightweightSystem createLightweightSystem() {
-                return new LightweightSystem() {
-                    @Override
-                    public void setControl(final Canvas c) {
-                        super.setControl(c);
-                        this.getUpdateManager().setGraphicsSource(new GraphicsSource() {
-                            @Override
-                            public Graphics getGraphics(Rectangle r) {
-                                c.redraw(r.x, r.y, r.width, r.height, false);
-                                // The actual hack is the following code line:
-                                // In original GEF code a call is made to the #update() method of the c Canvas.
-                                // But calling #update() at this point causes SWT to redraw the drag over
-                                // feedback which in turn causes GEF to redraw the drag under feedback etc.
-                                // The final result is flickering (because of constant erase and redraw) and graphical artifacts.
-                                // Commenting this line however seems to have no side effect (so far).
-                                //c.update();
-                                return null;
-                            }
+        // Set CSS class name
+        viewer.getControl().setData("org.eclipse.e4.ui.css.CssClassName", "ArchiFigureCanvas"); //$NON-NLS-1$ //$NON-NLS-2$
         
-                            @Override
-                            public void flushGraphics(Rectangle region) {
-                                // Nothing to do.
-                            }
-                        });
-                    }
-                };
-            }
-        };
-
-        viewer.createControl(parent);
-        setGraphicalViewer(viewer);
-        configureGraphicalViewer();
-        hookGraphicalViewer();
-        initializeGraphicalViewer();
+        // Set background color in case theming is disabled
+        viewer.getControl().setBackground(new Color(255, 255, 255));
     }
-
+    
     private void hookSelectionListener() {
         getGraphicalViewer().addSelectionChangedListener(new ISelectionChangedListener() {
             @Override
@@ -485,18 +458,20 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
      * Apply grid Prefs
      */
     protected void applyUserGridPreferences() {
+        IPreferenceStore store = ArchiPlugin.PREFERENCES;
+        
         // Grid Spacing
-        int gridSize = Preferences.getGridSize();
+        int gridSize = store.getInt(IPreferenceConstants.GRID_SIZE);
         getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_SPACING, new Dimension(gridSize, gridSize));
         
         // Grid Visible
-        getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_VISIBLE, Preferences.isGridVisible());
+        getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_VISIBLE, store.getBoolean(IPreferenceConstants.GRID_VISIBLE));
         
         // Grid Enabled
-        getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_ENABLED, Preferences.isGridSnap());
+        getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_ENABLED, store.getBoolean(IPreferenceConstants.GRID_SNAP));
 
         // Snap to Guidelines
-        getGraphicalViewer().setProperty(SnapToGeometry.PROPERTY_SNAP_ENABLED, Preferences.doShowGuideLines());
+        getGraphicalViewer().setProperty(SnapToGeometry.PROPERTY_SNAP_ENABLED, store.getBoolean(IPreferenceConstants.GRID_SHOW_GUIDELINES));
     }
 
     /**
@@ -506,7 +481,7 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
     @Override
     protected PaletteViewerProvider createPaletteViewerProvider() {
         // Ensure palette is showing or not
-        boolean showPalette = Preferences.doShowPalette();
+        boolean showPalette = ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.PALETTE_STATE);
         getPalettePreferences().setPaletteState(showPalette ? FlyoutPaletteComposite.STATE_PINNED_OPEN : FlyoutPaletteComposite.STATE_COLLAPSED);
 
         return new PaletteViewerProvider(getEditDomain()) {
@@ -523,6 +498,12 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
      */
     protected void configurePaletteViewer(final PaletteViewer viewer) {
         PaletteViewerPreferences prefs = viewer.getPaletteViewerPreferences();
+        
+        // Don't use large icons
+        prefs.setUseLargeIcons(PaletteViewerPreferences.LAYOUT_ICONS, false);
+        prefs.setUseLargeIcons(PaletteViewerPreferences.LAYOUT_COLUMNS, false);
+        prefs.setUseLargeIcons(PaletteViewerPreferences.LAYOUT_DETAILS, false);
+        prefs.setUseLargeIcons(PaletteViewerPreferences.LAYOUT_LIST, false);
         
         // First time use so set to icons layout
         if(!InternalGEFPlugin.getDefault().getPreferenceStore().getBoolean("com.archimatetool.paletteSet")) { //$NON-NLS-1$
@@ -577,13 +558,18 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
             }
             
             /*
-             * Double-click on Format Painter
+             * Double-click
              */
             @Override
             public void mouseDoubleClick(MouseEvent e) {
+                // Format Painter reset
                 ToolEntry toolEntry = findToolEntryAt(viewer, new Point(e.x, e.y));
                 if(toolEntry instanceof FormatPainterToolEntry) {
                     FormatPainterInfo.INSTANCE.reset();
+                }
+                // Set Tool Entry sticky
+                else {
+                    toolEntry.setToolProperty(AbstractTool.PROPERTY_UNLOAD_WHEN_FINISHED, false);
                 }
             }
         });
@@ -772,6 +758,12 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         action.setToolTipText(Messages.AbstractDiagramEditor_15);
         getSelectionActions().add(action.getId());
 
+        action = new MatchSizeAction(this);
+        registry.registerAction(action);
+        action.setText(Messages.AbstractDiagramEditor_22); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_23);
+        getSelectionActions().add(action.getId());
+
         action = new AlignmentAction((IWorkbenchPart)this, PositionConstants.LEFT);
         action.setText(Messages.AbstractDiagramEditor_7); // Externalise string as it's internal to GEF
         action.setToolTipText(Messages.AbstractDiagramEditor_16);
@@ -878,9 +870,6 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         // Connection Router types
         action = new ConnectionRouterAction.BendPointConnectionRouterAction(this);
         registry.registerAction(action);
-// Doesn't work with Connection to Connection
-//        action = new ConnectionRouterAction.ShortestPathConnectionRouterAction(this);
-        registry.registerAction(action);
         action = new ConnectionRouterAction.ManhattanConnectionRouterAction(this);
         registry.registerAction(action);
         
@@ -944,6 +933,10 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         action = new SelectElementInTreeAction(this);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
+        
+        // Find/Replace
+        action = new FindReplaceAction(getEditorSite().getWorkbenchWindow());
+        registry.registerAction(action);
     }
     
     /**
@@ -1042,6 +1035,14 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
             return getModel();
         }
 
+        // Find/Replace Provider
+        if(adapter == IFindReplaceProvider.class) {
+            if(fFindReplaceProvider == null) {
+                fFindReplaceProvider = new DiagramEditorFindReplaceProvider(getGraphicalViewer());
+            }
+            return fFindReplaceProvider;
+        }
+        
         return super.getAdapter(adapter);
     }
     
@@ -1061,7 +1062,7 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         super.dispose();
         
         // Remove Preference listener
-        Preferences.STORE.removePropertyChangeListener(appPreferencesListener);
+        ArchiPlugin.PREFERENCES.removePropertyChangeListener(appPreferencesListener);
         
         // Remove eCore adapter listener objects
         eCoreAdapter.remove(getModel(), getModel() != null ? getModel().getArchimateModel() : null);
@@ -1081,6 +1082,10 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
             }
         }
 
+        if(fPaletteRoot != null) {
+            fPaletteRoot.dispose();
+        }
+        
         // Can now be garbage collected
         fDiagramModel = null;
     }

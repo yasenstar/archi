@@ -16,10 +16,9 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.IArchimateDiagramEditor;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateDiagramModel;
 import com.archimatetool.model.IArchimateElement;
@@ -47,6 +46,8 @@ public class TreeViewpointFilterProvider implements IPartListener {
      */
     private TreeModelViewer fViewer;
     
+    private Color colorGrey = new Color(128, 128, 128);
+    
     /**
      * Application Preferences Listener
      */
@@ -68,7 +69,7 @@ public class TreeViewpointFilterProvider implements IPartListener {
         }
         
         // Listen to Preferences
-        Preferences.STORE.addPropertyChangeListener(prefsListener);
+        ArchiPlugin.PREFERENCES.addPropertyChangeListener(prefsListener);
 
         fViewer.getControl().addDisposeListener(new DisposeListener() {
             @Override
@@ -77,7 +78,7 @@ public class TreeViewpointFilterProvider implements IPartListener {
             		PlatformUI.getWorkbench().getActiveWorkbenchWindow().getPartService().removePartListener(TreeViewpointFilterProvider.this);
             	}
                 
-                Preferences.STORE.removePropertyChangeListener(prefsListener);
+                ArchiPlugin.PREFERENCES.removePropertyChangeListener(prefsListener);
                 
                 fActiveDiagramModel = null;
                 fViewer = null;
@@ -180,12 +181,12 @@ public class TreeViewpointFilterProvider implements IPartListener {
                         IArchimateConcept source = ((IArchimateRelationship)element).getSource();
                         IArchimateConcept target = ((IArchimateRelationship)element).getTarget();
                         if(!viewpoint.isAllowedConcept(source.eClass()) || !viewpoint.isAllowedConcept(target.eClass())) {
-                            return ColorFactory.get(128, 128, 128);
+                            return colorGrey;
                         }
                     }
                     else if(element instanceof IArchimateElement) {
                         if(!viewpoint.isAllowedConcept(((IArchimateElement)element).eClass())) {
-                            return ColorFactory.get(128, 128, 128);
+                            return colorGrey;
                         }
                     }
                 }
@@ -196,6 +197,6 @@ public class TreeViewpointFilterProvider implements IPartListener {
     }
     
     boolean isActive() {
-        return Preferences.STORE.getBoolean(IPreferenceConstants.VIEWPOINTS_FILTER_MODEL_TREE);
+        return ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.VIEWPOINTS_FILTER_MODEL_TREE);
     }
 }

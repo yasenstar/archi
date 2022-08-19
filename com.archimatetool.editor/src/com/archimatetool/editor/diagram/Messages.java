@@ -41,6 +41,10 @@ public class Messages extends NLS {
 
     public static String AbstractDiagramEditor_21;
 
+    public static String AbstractDiagramEditor_22;
+
+    public static String AbstractDiagramEditor_23;
+
     public static String AbstractDiagramEditor_3;
 
     public static String AbstractDiagramEditor_4;
@@ -104,6 +108,8 @@ public class Messages extends NLS {
     public static String AbstractPaletteRoot_6;
 
     public static String AbstractPaletteRoot_7;
+
+    public static String AbstractPaletteRoot_8;
 
     public static String ArchimateDiagramEditor_0;
 

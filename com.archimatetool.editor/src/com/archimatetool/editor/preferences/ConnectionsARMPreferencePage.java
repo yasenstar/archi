@@ -28,6 +28,7 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
 
 
@@ -51,7 +52,7 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
     private CheckboxTableViewer fTableViewerNewRelations, fTableViewerReversedRelations, fTableViewerHiddenRelations;
     
     public ConnectionsARMPreferencePage() {
-        setPreferenceStore(Preferences.STORE);
+        setPreferenceStore(ArchiPlugin.PREFERENCES);
         setDescription(Messages.ConnectionsARMPreferencePage_0);
     }
     
@@ -221,9 +222,6 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         getPreferenceStore().setValue(CREATE_RELATION_WHEN_ADDING_MODEL_TREE_ELEMENT_TO_CONTAINER, fCreateRelationWhenAddingModelTreeElementButton.getSelection());
         getPreferenceStore().setValue(CREATE_RELATION_WHEN_MOVING_ELEMENT_TO_CONTAINER, fCreateRelationWhenMovingElement.getSelection());
         
-        // Refresh the connection preferences *before* setting (which sends a notification)
-        ConnectionPreferences.reset();
-
         int value = 0;
         for(Object checked :  fTableViewerNewRelations.getCheckedElements()) {
             value |= ConnectionPreferences.RELATION_KEYMAP.get(checked);

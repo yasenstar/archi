@@ -9,11 +9,12 @@ import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.RGB;
 import org.eclipse.ui.IEditorPart;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.ICreationFactory;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.factory.IGraphicalObjectUIProvider;
@@ -73,10 +74,10 @@ public class SketchModelFactory implements ICreationFactory {
             sticky.setName(ArchiLabelProvider.INSTANCE.getDefaultName(fTemplate));
             
             // Gradient
-            sticky.setGradient(Preferences.STORE.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
+            sticky.setGradient(ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
 
-            if(fParam instanceof Color) {
-                String color = ColorFactory.convertColorToString((Color)fParam);
+            if(fParam instanceof RGB) {
+                String color = ColorFactory.convertRGBToString((RGB)fParam);
                 sticky.setFillColor(color);
                 
                 Color lineColor = ColorFactory.getDefaultLineColor(sticky);
@@ -92,7 +93,7 @@ public class SketchModelFactory implements ICreationFactory {
             group.setName(ArchiLabelProvider.INSTANCE.getDefaultName(fTemplate));
             ColorFactory.setDefaultColors(group);
             // Gradient
-            group.setGradient(Preferences.STORE.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
+            group.setGradient(ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
         }
         
         // Connection
@@ -118,7 +119,7 @@ public class SketchModelFactory implements ICreationFactory {
 
         // Add new bounds with a default user size
         if(object instanceof IDiagramModelObject) {
-            Dimension size = provider.getUserDefaultSize();
+            Dimension size = provider.getDefaultSize();
             ((IDiagramModelObject)object).setBounds(0, 0, size.width, size.height);
         }
         

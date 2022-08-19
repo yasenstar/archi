@@ -18,11 +18,12 @@ import org.eclipse.draw2d.text.ParagraphTextLayout;
 import org.eclipse.draw2d.text.TextFlow;
 import org.eclipse.swt.SWT;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.textrender.TextRenderer;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.model.IDiagramModelObject;
+import com.archimatetool.model.IIconic;
 import com.archimatetool.model.ITextAlignment;
 import com.archimatetool.model.ITextPosition;
 
@@ -80,6 +81,11 @@ public abstract class AbstractTextControlContainerFigure extends AbstractContain
         };
         
         add(getMainFigure(), mainLocator);
+        
+        // If the model object is IIconic
+        if(getDiagramModelObject() instanceof IIconic) {
+            setIconicDelegate(new IconicDelegate((IIconic)getDiagramModelObject()));
+        }
     }
     
     @Override
@@ -107,7 +113,15 @@ public abstract class AbstractTextControlContainerFigure extends AbstractContain
             if(fTextPositionDelegate != null) {
                 fTextPositionDelegate.updateTextPosition();
             }
+            
+            // Update Grid Layout
+            GridLayout layout = (GridLayout)getTextControl().getParent().getParent().getLayoutManager();
+            layout.marginWidth = getTextControlMarginWidth();
+            layout.marginHeight = getTextControlMarginHeight();
         }
+
+        // Icon Image
+        updateIconImage();
         
         repaint(); // repaint when figure changes
     }
@@ -162,19 +176,20 @@ public abstract class AbstractTextControlContainerFigure extends AbstractContain
     protected TextFlow createTextFlowControl(Locator textLocator) {
         TextFlow textFlow = new TextFlow();
         
-        int wordWrapStyle = Preferences.STORE.getInt(IPreferenceConstants.ARCHIMATE_FIGURE_WORD_WRAP_STYLE);
+        int wordWrapStyle = ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.ARCHIMATE_FIGURE_WORD_WRAP_STYLE);
         textFlow.setLayoutManager(new ParagraphTextLayout(textFlow, wordWrapStyle));
         
         FlowPage page = new FlowPage();
         page.add(textFlow);
         
         Figure textWrapperFigure = new Figure();
+        
         GridLayout layout = new GridLayout();
         layout.marginWidth = getTextControlMarginWidth();
-        layout.marginHeight = 5;
+        layout.marginHeight = getTextControlMarginHeight();
         textWrapperFigure.setLayoutManager(layout);
-        GridData gd = new GridData(SWT.CENTER, SWT.TOP, true, true);
-        textWrapperFigure.add(page, gd);
+
+        textWrapperFigure.add(page, new GridData(SWT.CENTER, SWT.TOP, true, true));
         
         if(getDiagramModelObject() instanceof ITextPosition) {
             fTextPositionDelegate = new TextPositionDelegate(textWrapperFigure, page, (ITextPosition)getDiagramModelObject());
@@ -185,7 +200,71 @@ public abstract class AbstractTextControlContainerFigure extends AbstractContain
         
         return textFlow;
     }
-
+    
+    /**
+     * Adjust the figure's position in relation to the position of the text control
+     * Assumes a square target working area.
+     * @param rect the working area of the figure to modify
+     */
+    protected void setFigurePositionFromTextPosition(Rectangle rect) {
+    	setFigurePositionFromTextPosition(rect, 1);
+    }
+    
+    /**
+     * Adjust the figure's position in relation to the position of the text control
+     * @param rect the working area of the figure to modify
+     * @param ratio the width/height ratio of the target working area
+     */
+    protected void setFigurePositionFromTextPosition(Rectangle rect, double ratio) {
+        if(StringUtils.isSetAfterTrim(getText())) { // If there is text to display...
+            int textPosition = ((ITextPosition)getDiagramModelObject()).getTextPosition();
+            int textAlignment = getDiagramModelObject().getTextAlignment();
+            
+            // Try to fit an icon of the same height into rect. If not possible then use the same width.
+            Rectangle newIconPosition = rect.getCopy();
+            if((rect.height * ratio) <= rect.width) {
+            	// Same height, so some room on left/right
+            	newIconPosition.width = (int) (rect.height * ratio);
+            	
+            	switch(textAlignment) {
+	            	// By default, icon will be on the (top) left which matches TEXT_ALIGNMENT_RIGHT
+	                case ITextAlignment.TEXT_ALIGNMENT_CENTER:
+	                	newIconPosition.x += (rect.width - newIconPosition.width) / 2;
+	                	break;
+	                case ITextAlignment.TEXT_ALIGNMENT_LEFT:
+	                	newIconPosition.x += rect.width - newIconPosition.width;
+	                    break;
+	                default:
+	                    break;
+	            }
+            } else {
+            	// Same width, so some room on top/below
+            	newIconPosition.height = (int) (rect.width / ratio);
+            	
+            	switch(textPosition) {
+	            	case ITextPosition.TEXT_POSITION_TOP:
+	            		newIconPosition.y += rect.height - newIconPosition.height;
+	                	break;
+	                // By default, icon will be on the (top) left which matches TEXT_POSITION_BOTTOM
+	                case ITextPosition.TEXT_POSITION_CENTRE:
+	                	newIconPosition.y += (rect.height - newIconPosition.height) / 2;
+	                	break;
+	                default:
+	                    break;
+	            }
+            }
+                
+            rect.setBounds(newIconPosition);
+        }
+    }
+    
+    /**
+     * @return true if the figure size should be constrained by the position of the text
+     */
+    protected boolean shouldConstrainFigureForTextPosition(int textPosition) {
+        return true;
+    }
+    
     protected Label createLabelControl(Locator textLocator) {
         Label label = new Label(""); //$NON-NLS-1$
         add(label, textLocator);
@@ -196,47 +275,53 @@ public abstract class AbstractTextControlContainerFigure extends AbstractContain
      * @return the left and right margin width for text
      */
     protected int getTextControlMarginWidth() {
-        return 5;
+        return 4;
     }
     
-    protected int getIconOffset() {
-        return 0;
+    /**
+     * @return the top and bottom margin height for text
+     */
+    protected int getTextControlMarginHeight() {
+        return 4;
     }
-
+    
     /**
      * Calculate the Text Control Bounds or null if none.
      */
     protected Rectangle calculateTextControlBounds() {
-        // Delegate
+        // Check Delegate first
         if(getFigureDelegate() != null) {
-            return getFigureDelegate().calculateTextControlBounds();
+            Rectangle rect = getFigureDelegate().calculateTextControlBounds();
+            if(rect != null) {
+                return rect;
+            }
         }
         
-        // If there is no icon we don't need to do any offsets
-        if(getIconOffset() == 0) {
+        // We will adjust for any internal icons...
+        
+        // If there is no icon offset or the icon is not visible we don't need to do any offsets
+        if(getIconOffset() == 0 || !isIconVisible()) {
             return null;
         }
         
-        Rectangle bounds = getBounds().getCopy();
-
-        // Adjust for left/right margin
+        // Adjust for icon offset and left/right margins
         int iconOffset = getIconOffset() - getTextControlMarginWidth();
 
-        int textpos = ((ITextPosition)getDiagramModelObject()).getTextPosition();
-        int textAlignment = getDiagramModelObject().getTextAlignment();
-        
-        if(textpos == ITextPosition.TEXT_POSITION_TOP) {
+        Rectangle rect = getBounds().getCopy();
+
+        // Text position is Top
+        if(((ITextPosition)getDiagramModelObject()).getTextPosition() == ITextPosition.TEXT_POSITION_TOP) {
+            int textAlignment = getDiagramModelObject().getTextAlignment();
+
             if(textAlignment == ITextAlignment.TEXT_ALIGNMENT_CENTER) {
-                bounds.x += iconOffset;
-                bounds.width = bounds.width - (iconOffset * 2);
+                rect.x += iconOffset;
+                rect.width = rect.width - (iconOffset * 2);
             }
             else if(textAlignment == ITextAlignment.TEXT_ALIGNMENT_RIGHT) {
-                bounds.width -= iconOffset;
+                rect.width -= iconOffset;
             }
         }
         
-        return bounds;
+        return rect;
     }
-    
-
 }

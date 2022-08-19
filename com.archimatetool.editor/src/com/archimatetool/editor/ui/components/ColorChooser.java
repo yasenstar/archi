@@ -36,6 +36,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.dialogs.PreferencesUtil;
+import org.eclipse.ui.forms.widgets.FormToolkit;
 
 import com.archimatetool.editor.preferences.ColoursPreferencePage;
 import com.archimatetool.editor.ui.IArchiImages;
@@ -78,6 +79,12 @@ public class ColorChooser extends EventManager {
     
     private List<IAction> fExtraActionsList = new ArrayList<IAction>();
     
+    public ColorChooser(Composite parent, FormToolkit toolkit) {
+        this(parent);
+        toolkit.adapt(fColorButton, true, true);
+        toolkit.adapt(fMenuButton, true, true);
+    }
+    
     public ColorChooser(Composite parent) {
         fComposite = new Composite(parent, SWT.NULL);
         fComposite.setBackgroundMode(SWT.INHERIT_FORCE);
@@ -104,9 +111,6 @@ public class ColorChooser extends EventManager {
         fColorButton.addDisposeListener((e) -> {
             if(fColorButton.getImage() != null) {
                 fColorButton.getImage().dispose();
-            }
-            if(fColor != null) {
-                fColor.dispose();
             }
         });
         
@@ -267,9 +271,6 @@ public class ColorChooser extends EventManager {
         Display display = fColorButton.getDisplay();
         GC gc = new GC(fColorButton.getImage());
         
-        if(fColor != null) {
-            fColor.dispose();
-        }
         fColor = new Color(display, fColorValue);
         
         Rectangle r = fColorButton.getImage().getBounds();

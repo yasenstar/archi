@@ -8,26 +8,21 @@ package com.archimatetool.editor.views.navigator;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.emf.ecore.EObject;
-import org.eclipse.jface.util.IPropertyChangeListener;
-import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateElement;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IArchimateRelationship;
 
 
@@ -42,58 +37,54 @@ public class NavigatorViewer extends TreeViewer {
     
     private boolean fShowTargetElements = true;
     
-    /**
-     * Application Preferences Listener
-     */
-    private IPropertyChangeListener prefsListener = new IPropertyChangeListener() {
-        @Override
-        public void propertyChange(PropertyChangeEvent event) {
-            if(event.getProperty() == IPreferenceConstants.NAVIGATOR_TREE_FONT) {
-                UIUtils.setFontFromPreferences(getTree(), IPreferenceConstants.NAVIGATOR_TREE_FONT, false);
-                refresh();
-            }
-        }
-    };
-
-    
     public NavigatorViewer(Composite parent, int style) {
         super(parent, style | SWT.MULTI);
         
-        UIUtils.setFontFromPreferences(getTree(), IPreferenceConstants.NAVIGATOR_TREE_FONT, false);
+        UIUtils.setFontFromPreferences(getTree(), IPreferenceConstants.NAVIGATOR_TREE_FONT, true);
+        
+        // Mac Silicon Item height
+        UIUtils.fixMacSiliconItemHeight(getTree());
         
         setContentProvider(new NavigatorViewerContentProvider());
         setLabelProvider(new NavigatorViewerLabelProvider());
         setAutoExpandLevel(3);
         
         setComparator(new ViewerComparator());
-        
-        // Listen to Preferences
-        Preferences.STORE.addPropertyChangeListener(prefsListener);
-        
-        getTree().addDisposeListener(new DisposeListener() {
-            @Override
-            public void widgetDisposed(DisposeEvent e) {
-                Preferences.STORE.removePropertyChangeListener(prefsListener);
-            }
-        });
     }
     
-    public Object getActualInput() {
-        return getActualInput(getInput());
-    }
-    
-    public Object getActualInput(Object input) {
+    /**
+     * @return The input object from the array
+     */
+    IArchimateModelObject getActualInput() {
+        Object input = getInput();
+        
         if(input instanceof Object[] && ((Object[])input).length == 1) {
             input = ((Object[])input)[0];
         }
-        return input;
+        
+        return input instanceof IArchimateModelObject ? (IArchimateModelObject)input : null;
     }
     
-    public void setShowTargetElements(boolean set) {
+    void setShowTargetElements(boolean set) {
         if(fShowTargetElements != set) {
             fShowTargetElements = set;
             refresh();
             expandToLevel(3);
+        }
+    }
+    
+    /**
+     * Refresh the tree and restore expanded tree nodes
+     */
+    void refreshTreePreservingExpandedNodes() {
+        try {
+            Object[] expanded = getExpandedElements();
+            getControl().setRedraw(false);
+            refresh();
+            setExpandedElements(expanded);
+        }
+        finally {
+            getControl().setRedraw(true);
         }
     }
     
@@ -113,14 +104,12 @@ public class NavigatorViewer extends TreeViewer {
         @Override
         public Object[] getElements(Object parent) {
             if(parent instanceof Object[]) {
-                // Check if it was deleted
-                Object input = getActualInput(parent);
-                if(input instanceof EObject && ((EObject)input).eContainer() == null) {
-                    return new Object[0];
+                IArchimateModelObject input = getActualInput();
+                if(input != null && input.eContainer() != null) { // Check if it was deleted
+                    return (Object[])parent;
                 }
-                
-                return (Object[])parent;
             }
+            
             return new Object[0];
         }
 
@@ -170,8 +159,7 @@ public class NavigatorViewer extends TreeViewer {
     /**
      * Label Provider
      */
-    private class NavigatorViewerLabelProvider extends LabelProvider {
-        
+    private static class NavigatorViewerLabelProvider extends LabelProvider {
         @Override
         public String getText(Object element) {
             return ArchiLabelProvider.INSTANCE.getLabelNormalised(element);

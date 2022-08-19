@@ -20,9 +20,7 @@ import org.eclipse.swt.graphics.Pattern;
 
 import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.figures.FigureUtils.Direction;
-import com.archimatetool.editor.diagram.util.ExtendedSWTGraphics;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.FontFactory;
@@ -46,7 +44,7 @@ public abstract class AbstractDiagramModelObjectFigure extends Figure
 implements IDiagramModelObjectFigure {
     
     // Use line width offset handling
-    boolean useLineOffset = ArchiPlugin.INSTANCE.getPreferenceStore().getBoolean(IPreferenceConstants.USE_FIGURE_LINE_OFFSET);
+    boolean useLineOffset = ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.USE_FIGURE_LINE_OFFSET);
     
     private IDiagramModelObject fDiagramModelObject;
     
@@ -57,6 +55,9 @@ implements IDiagramModelObjectFigure {
     
     // Delegate to do drawing
     private IFigureDelegate fFigureDelegate;
+    
+    // Delegate to draw icon image
+    private IconicDelegate fIconicDelegate;
     
     protected AbstractDiagramModelObjectFigure() {
     }
@@ -104,9 +105,7 @@ implements IDiagramModelObjectFigure {
     protected void setLineWidth(Graphics graphics, int lineWidth, Rectangle bounds) {
         graphics.setLineWidth(lineWidth);
         
-        // If we are exporting to image or printing this will be ExtendedSWTGraphics
-        // Otherwise it will be SWTGraphics
-        final double scale = graphics instanceof ExtendedSWTGraphics ? ((ExtendedSWTGraphics)graphics).getScale() : FigureUtils.getFigureScale(this);
+        final double scale = FigureUtils.getGraphicsScale(graphics);
         
         // If line width is 1 and scale is 100% and don't use offset then do nothing
         if(lineWidth == 1 && scale == 1.0 && !useLineOffset) {
@@ -165,11 +164,10 @@ implements IDiagramModelObjectFigure {
     }
     
     /**
-     * Set the fill color to that in the model, or failing that, as per default
+     * Reset the fill color
      */
     protected void setFillColor() {
-        String val = fDiagramModelObject.getFillColor();
-        fFillColor = ColorFactory.get(val);
+        fFillColor = null;
     }
     
     /**
@@ -178,8 +176,14 @@ implements IDiagramModelObjectFigure {
     @Override
     public Color getFillColor() {
         if(fFillColor == null) {
-            return ColorFactory.getDefaultFillColor(fDiagramModelObject);
+            fFillColor = ColorFactory.get(fDiagramModelObject.getFillColor());
+            
+            // Use default fill color
+            if(fFillColor == null) {
+                fFillColor = ColorFactory.getDefaultFillColor(fDiagramModelObject);
+            }
         }
+        
         return fFillColor;
     }
     
@@ -200,13 +204,11 @@ implements IDiagramModelObjectFigure {
         }
     }
     
-    
     /**
-     * Set the line color to that in the model, or failing that, as per default
+     * Reset the line color
      */
     protected void setLineColor() {
-        String val = fDiagramModelObject.getLineColor();
-        fLineColor = ColorFactory.get(val);
+        fLineColor = null;
     }
     
     /**
@@ -214,15 +216,22 @@ implements IDiagramModelObjectFigure {
      */
     @Override
     public Color getLineColor() {
-        // User preference to derive element line colour
-        if(Preferences.STORE.getBoolean(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR)) {
-            return ColorFactory.getDarkerColor(getFillColor(),
-                    Preferences.STORE.getInt(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR_FACTOR) / 10f);
+        if(fLineColor == null) {
+            // User preference to derive element line colour
+            if(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR)) {
+                fLineColor = ColorFactory.getDarkerColor(getFillColor(),
+                        ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR_FACTOR) / 10f);
+            }
+            else {
+                fLineColor = ColorFactory.get(fDiagramModelObject.getLineColor());
+                
+                // Use default line color
+                if(fLineColor == null) {
+                    fLineColor = ColorFactory.getDefaultLineColor(getDiagramModelObject());
+                }
+            }
         }
         
-        if(fLineColor == null) {
-            return ColorFactory.getDefaultLineColor(getDiagramModelObject());
-        }
         return fLineColor;
     }
     
@@ -237,15 +246,98 @@ implements IDiagramModelObjectFigure {
     protected int getGradient() {
         return fDiagramModelObject.getGradient();
     }
+    
+    @Override
+    public void updateIconImage() {
+        if(getIconicDelegate() != null) {
+            getIconicDelegate().updateImage();
+        }
+    }
+    
+    /**
+     * If there is a delegate, draw the icon image in the given area
+     */
+    public void drawIconImage(Graphics graphics, Rectangle drawArea) {
+        if(hasIconImage()) {
+            getIconicDelegate().drawIcon(graphics, drawArea); // Call this directly in case offsets are set elsewhere
+        }
+    }
+    
+    /**
+     * If there is a delegate, draw the icon image in the given area with given offsets
+     */
+    public void drawIconImage(Graphics graphics, Rectangle drawArea, int topOffset, int rightOffset, int bottomOffset, int leftOffset) {
+        drawIconImage(graphics, drawArea, drawArea, topOffset, rightOffset, bottomOffset, leftOffset);
+    }
+
+    /**
+     * If there is a delegate, draw the icon image in the given area with given offsets and pass full figure bounds
+     */
+    public void drawIconImage(Graphics graphics, Rectangle figureBounds, Rectangle drawArea, int topOffset, int rightOffset, int bottomOffset, int leftOffset) {
+        if(hasIconImage()) {
+            getIconicDelegate().setOffsets(topOffset, rightOffset, bottomOffset, leftOffset);
+            getIconicDelegate().drawIcon(graphics, figureBounds, drawArea);
+        }
+    }
+
+    /**
+     * @return true if this has a delegate and an image to draw
+     */
+    public boolean hasIconImage() {
+        return getIconicDelegate() != null && getIconicDelegate().hasImage();
+    }
+    
+    /**
+     * Set the IconicDelegate if this figure draws icons
+     */
+    public void setIconicDelegate(IconicDelegate delegate) {
+        fIconicDelegate = delegate;
+    }
+    
+    /**
+     * @return The IconicDelegate if this figure draws icons, or null if not
+     */
+    public IconicDelegate getIconicDelegate() {
+        return fIconicDelegate;
+    }
+    
+    /**
+     * @return whether to show the small in-built icon - either the ArchiMate icon or the view reference icon
+     */
+    public boolean isIconVisible() {
+        switch(getDiagramModelObject().getIconVisibleState()) {
+            case IDiagramModelObject.ICON_VISIBLE_NEVER:
+                return false;
+
+            case IDiagramModelObject.ICON_VISIBLE_IF_NO_IMAGE_DEFINED:
+                return !hasIconImage();
+
+            default:
+                return true;
+        }
+    }
+
+    /**
+     * @return The offset in pixels to adjust the text position if there is an inbuilt icon
+     */
+    public int getIconOffset() {
+        return 0;
+    }
 
     /**
      * Apply a gradient pattern to the given Graphics instance and bounds using the current fill color, alpha and gradient setting
+     * If a gradient is applied the alpha of graphics will be set to 255 so callers should set it back if needed after
+     * calling {@link #disposeGradientPattern(Graphics, Pattern)}
      * @return the Pattern if a gradient should be applied or null if not
      */
     protected Pattern applyGradientPattern(Graphics graphics, Rectangle bounds) {
         Pattern gradient = null;
         
+        // Apply gradient
         if(getGradient() != IDiagramModelObject.GRADIENT_NONE) {
+            // Ensure graphics#alpha is 255
+            // See https://bugs.eclipse.org/bugs/show_bug.cgi?id=575778
+            graphics.setAlpha(255);
             gradient = FigureUtils.createGradient(graphics, bounds, getFillColor(), getAlpha(), Direction.get(getGradient()));
             graphics.setBackgroundPattern(gradient);
         }
@@ -267,7 +359,7 @@ implements IDiagramModelObjectFigure {
     
     @Override
     public IFigure getToolTip() {
-        if(!Preferences.doShowViewTooltips()) {
+        if(!ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.VIEW_TOOLTIPS)) {
             return null;
         }
         
@@ -313,7 +405,7 @@ implements IDiagramModelObjectFigure {
     @Override
     public Dimension getDefaultSize() {
         IGraphicalObjectUIProvider provider = (IGraphicalObjectUIProvider)ObjectUIFactory.INSTANCE.getProvider(getDiagramModelObject());
-        return provider != null ? provider.getUserDefaultSize() : IGraphicalObjectUIProvider.DefaultRectangularSize;
+        return provider != null ? provider.getDefaultSize() : IGraphicalObjectUIProvider.defaultSize();
     }
     
     @Override
@@ -323,5 +415,9 @@ implements IDiagramModelObjectFigure {
 
     @Override
     public void dispose() {
+        if(fIconicDelegate != null) {
+            fIconicDelegate.dispose();
+            fIconicDelegate = null;
+        }
     }
 }

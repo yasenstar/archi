@@ -8,6 +8,7 @@ package com.archimatetool.editor.actions;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,9 +21,9 @@ import org.eclipse.swt.custom.BusyIndicator;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkbenchWindow;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.model.IArchimateModel;
 
@@ -33,16 +34,17 @@ import com.archimatetool.model.IArchimateModel;
  * 
  * @author Phillip Beauvoir
  */
+@SuppressWarnings("nls")
 public class MRUMenuManager extends MenuManager implements PropertyChangeListener {
     
-    static final String MRU_PREFS_KEY = "MRU"; //$NON-NLS-1$
+    static final String MRU_PREFS_KEY = "MRU";
     
     private List<File> fMRUList;
     
     private IWorkbenchWindow fWindow;
     
     public MRUMenuManager(IWorkbenchWindow window) {
-        super(Messages.MRUMenuManager_0, "open_recent_menu"); //$NON-NLS-1$
+        super(Messages.MRUMenuManager_0, "open_recent_menu");
         
         fWindow = window;
         
@@ -58,7 +60,7 @@ public class MRUMenuManager extends MenuManager implements PropertyChangeListene
         List<File> list = new ArrayList<File>();
         
         for(int i = 0; i < getPreferencesMRUMax(); i++) {
-            String path = Preferences.STORE.getString(MRU_PREFS_KEY + i);
+            String path = ArchiPlugin.PREFERENCES.getString(MRU_PREFS_KEY + i);
             if(StringUtils.isSet(path)) {
                 list.add(new File(path));
             }
@@ -94,12 +96,12 @@ public class MRUMenuManager extends MenuManager implements PropertyChangeListene
     private void saveList() {
         // Clear
         for(int i = 0; i < 50; i++) {
-            Preferences.STORE.setValue(MRU_PREFS_KEY + i, ""); //$NON-NLS-1$
+            ArchiPlugin.PREFERENCES.setValue(MRU_PREFS_KEY + i, "");
         }
         
         // Save
         for(int i = 0; i < getMRUList().size(); i++) {
-            Preferences.STORE.setValue(MRU_PREFS_KEY + i, getMRUList().get(i).getAbsolutePath());
+            ArchiPlugin.PREFERENCES.setValue(MRU_PREFS_KEY + i, getMRUList().get(i).getAbsolutePath());
         }
     }
     
@@ -127,7 +129,7 @@ public class MRUMenuManager extends MenuManager implements PropertyChangeListene
     }
     
     int getPreferencesMRUMax() {
-        int max = Preferences.STORE.getInt(IPreferenceConstants.MRU_MAX);
+        int max = ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.MRU_MAX);
         if(max < 3) {
             max = 3;
         }
@@ -150,7 +152,7 @@ public class MRUMenuManager extends MenuManager implements PropertyChangeListene
             String pathPart = file.getParent();
             if(pathPart != null && pathPart.length() > maxLength) {
                 pathPart = pathPart.substring(0, maxLength - 3);
-                pathPart += "..." + File.separator; //$NON-NLS-1$
+                pathPart += "..." + File.separator;
                 path = pathPart += file.getName();
             }
         }
@@ -171,7 +173,7 @@ public class MRUMenuManager extends MenuManager implements PropertyChangeListene
                                         IEditorModelManager.PROPERTY_MODEL_SAVED == evt.getPropertyName()) {
             
             IArchimateModel model = (IArchimateModel)evt.getNewValue();
-            if(model != null && model.getFile() != null && !isTempFile(model.getFile()) && model.getFile().exists()) {
+            if(model != null && model.getFile() != null && model.getFile().exists() && !isTempFile(model.getFile())) {
                 addToList(model.getFile());
                 createMenuItems();
             }
@@ -182,10 +184,15 @@ public class MRUMenuManager extends MenuManager implements PropertyChangeListene
      * Don't show temp files
      */
     boolean isTempFile(File file) {
-        final File tmpDir = new File(System.getProperty("java.io.tmpdir")); //$NON-NLS-1$
-        
-        return file != null && 
-                (file.getName().startsWith("~") || tmpDir.equals(file.getParentFile())); //$NON-NLS-1$
+        // File is in temp folder
+        try {
+            File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+            return file.getCanonicalPath().startsWith(tmpDir.getCanonicalPath());
+        }
+        catch(IOException ex) {
+            ex.printStackTrace();
+            return false;
+        }
     }
     
     @Override

@@ -10,12 +10,13 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.ui.IEditorPart;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.factory.IGraphicalObjectUIProvider;
 import com.archimatetool.editor.ui.factory.ObjectUIFactory;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateRelationship;
@@ -25,6 +26,7 @@ import com.archimatetool.model.IDiagramModelConnection;
 import com.archimatetool.model.IDiagramModelGroup;
 import com.archimatetool.model.IDiagramModelNote;
 import com.archimatetool.model.IDiagramModelObject;
+import com.archimatetool.model.IProfile;
 import com.archimatetool.model.ITextAlignment;
 import com.archimatetool.model.ITextPosition;
 
@@ -46,11 +48,11 @@ public class ArchimateDiagramModelFactory implements ICreationFactory {
         IDiagramModelArchimateObject dmo = IArchimateFactory.eINSTANCE.createDiagramModelArchimateObject();
         dmo.setArchimateElement(element);
         // Figure Type
-        dmo.setType(Preferences.STORE.getInt(IPreferenceConstants.DEFAULT_FIGURE_PREFIX + element.eClass().getName()));
+        dmo.setType(ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.DEFAULT_FIGURE_PREFIX + element.eClass().getName()));
         
         // Add new bounds with a default user size
         IGraphicalObjectUIProvider provider = (IGraphicalObjectUIProvider)ObjectUIFactory.INSTANCE.getProvider(dmo);
-        Dimension size = provider.getUserDefaultSize();
+        Dimension size = provider.getDefaultSize();
         dmo.setBounds(0, 0, size.width, size.height);
         
         dmo.setTextPosition(provider.getDefaultTextPosition());
@@ -60,8 +62,8 @@ public class ArchimateDiagramModelFactory implements ICreationFactory {
         ColorFactory.setDefaultColors(dmo);
         
         // Gradient
-        dmo.setGradient(Preferences.STORE.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
- 
+        dmo.setGradient(ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
+        
         return dmo;
     }
 
@@ -81,6 +83,7 @@ public class ArchimateDiagramModelFactory implements ICreationFactory {
     }
     
     private EClass fTemplate;
+    private IProfile fProfile;
     
     /**
      * Constructor for creating a new Ecore type model
@@ -90,6 +93,11 @@ public class ArchimateDiagramModelFactory implements ICreationFactory {
         fTemplate = template;
     }
     
+    public ArchimateDiagramModelFactory(EClass template, IProfile profile) {
+        fTemplate = template;
+        fProfile = profile;
+    }
+
     @Override
     public boolean isUsedFor(IEditorPart editor) {
         return editor instanceof IArchimateDiagramEditor;
@@ -101,7 +109,14 @@ public class ArchimateDiagramModelFactory implements ICreationFactory {
             return null;
         }
         
+        boolean isSpecialization =  fProfile != null && fProfile.getArchimateModel() != null;
+        
         EObject object = IArchimateFactory.eINSTANCE.create(fTemplate);
+        
+        // Add Profile to Concept if set
+        if(object instanceof IArchimateConcept && isSpecialization) {
+            ((IArchimateConcept)object).getProfiles().add(fProfile);
+        }
         
         // Connection created from Relationship Template
         if(object instanceof IArchimateRelationship) {
@@ -111,7 +126,7 @@ public class ArchimateDiagramModelFactory implements ICreationFactory {
         // Archimate Diagram Object created from Archimate Element Template
         else if(object instanceof IArchimateElement) {
             IArchimateElement element = (IArchimateElement)object;
-            element.setName(ArchiLabelProvider.INSTANCE.getDefaultName(fTemplate));
+            element.setName(isSpecialization ? fProfile.getName() : ArchiLabelProvider.INSTANCE.getDefaultName(fTemplate));
             return createDiagramModelArchimateObject(element);
         }
         
@@ -121,7 +136,7 @@ public class ArchimateDiagramModelFactory implements ICreationFactory {
             group.setName(ArchiLabelProvider.INSTANCE.getDefaultName(fTemplate));
             ColorFactory.setDefaultColors(group);
             // Gradient
-            group.setGradient(Preferences.STORE.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
+            group.setGradient(ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
         }
         
         // Note
@@ -129,7 +144,7 @@ public class ArchimateDiagramModelFactory implements ICreationFactory {
             IDiagramModelNote note = (IDiagramModelNote)object;
             ColorFactory.setDefaultColors(note);
             // Gradient
-            note.setGradient(Preferences.STORE.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
+            note.setGradient(ArchiPlugin.PREFERENCES.getInt(IPreferenceConstants.DEFAULT_GRADIENT));
         }
         
         // Connection
@@ -149,7 +164,7 @@ public class ArchimateDiagramModelFactory implements ICreationFactory {
         
         // Add new bounds with a default user size
         if(object instanceof IDiagramModelObject) {
-            Dimension size = provider.getUserDefaultSize();
+            Dimension size = provider.getDefaultSize();
             ((IDiagramModelObject)object).setBounds(0, 0, size.width, size.height);
         }
 

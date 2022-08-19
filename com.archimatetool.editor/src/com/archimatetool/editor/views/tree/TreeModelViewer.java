@@ -34,10 +34,10 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.model.DiagramModelUtils;
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.editor.ui.FontFactory;
 import com.archimatetool.editor.ui.UIUtils;
@@ -72,10 +72,6 @@ public class TreeModelViewer extends TreeViewer {
      */
     private TreeViewpointFilterProvider fViewpointFilterProvider;
     
-    private Font fontItalic = FontFactory.getItalic(getTree().getFont());
-    private Font fontBold = FontFactory.getBold(getTree().getFont());;
-    
-    
     /**
      * Application Preferences Listener
      */
@@ -88,7 +84,7 @@ public class TreeModelViewer extends TreeViewer {
                     break;
 
                 case IPreferenceConstants.MODEL_TREE_FONT:
-                    setTreeFonts();
+                    ((ModelTreeViewerLabelProvider)getLabelProvider()).resetFonts();
                     refresh();
                     break;
             }
@@ -98,9 +94,12 @@ public class TreeModelViewer extends TreeViewer {
     public TreeModelViewer(Composite parent, int style) {
         super(parent, style | SWT.MULTI);
         
-        // Fonts
-        setTreeFonts();
+        // Font
+        UIUtils.setFontFromPreferences(getTree(), IPreferenceConstants.MODEL_TREE_FONT, true);
 
+        // Mac Silicon Item height
+        UIUtils.fixMacSiliconItemHeight(getTree());
+        
         setContentProvider(new ModelTreeViewerContentProvider());
         setLabelProvider(new ModelTreeViewerLabelProvider());
         
@@ -196,12 +195,13 @@ public class TreeModelViewer extends TreeViewer {
         fViewpointFilterProvider = new TreeViewpointFilterProvider(this);
         
         // Listen to Preferences
-        Preferences.STORE.addPropertyChangeListener(prefsListener);
+        ArchiPlugin.PREFERENCES.addPropertyChangeListener(prefsListener);
         
         getTree().addDisposeListener(new DisposeListener() {
             @Override
             public void widgetDisposed(DisposeEvent e) {
-                Preferences.STORE.removePropertyChangeListener(prefsListener);
+                ArchiPlugin.PREFERENCES.removePropertyChangeListener(prefsListener);
+                fViewpointFilterProvider = null;
             }
         });
     }
@@ -240,7 +240,8 @@ public class TreeModelViewer extends TreeViewer {
                 if(!getControl().isDisposed()) { // check inside run loop
                     try {
                         getControl().setRedraw(false);
-                        refresh(element);
+                        // If element is not visible in case of drill-down then refresh the whole tree
+                        refresh(element != null ? (findItem(element) != null ? element : null) : null);
                     }
                     finally {
                         getControl().setRedraw(true);
@@ -248,6 +249,21 @@ public class TreeModelViewer extends TreeViewer {
                 }
             }
         });
+    }
+    
+    /**
+     * Refresh the tree and restore expanded tree nodes
+     */
+    void refreshTreePreservingExpandedNodes() {
+        try {
+            Object[] expanded = getExpandedElements();
+            getControl().setRedraw(false);
+            refresh();
+            setExpandedElements(expanded);
+        }
+        finally {
+            getControl().setRedraw(true);
+        }
     }
     
     /**
@@ -277,12 +293,6 @@ public class TreeModelViewer extends TreeViewer {
     @Override
     protected Object[] getSortedChildren(Object parentElementOrTreePath) {
         return super.getSortedChildren(parentElementOrTreePath);
-    }
-    
-    private void setTreeFonts() {
-        UIUtils.setFontFromPreferences(getTree(), IPreferenceConstants.MODEL_TREE_FONT, false);
-        fontItalic = FontFactory.getItalic(getTree().getFont());
-        fontBold = FontFactory.getBold(getTree().getFont());
     }
     
     /**
@@ -365,6 +375,9 @@ public class TreeModelViewer extends TreeViewer {
      * Label Provider
      */
     private class ModelTreeViewerLabelProvider extends CellLabelProvider {
+        private Font fontItalic;
+        private Font fontBold;
+        
         @Override
         public void update(ViewerCell cell) {
             cell.setText(getText(cell.getElement()));
@@ -373,6 +386,11 @@ public class TreeModelViewer extends TreeViewer {
             cell.setFont(getFont(cell.getElement()));
         }
         
+        private void resetFonts() {
+            fontItalic = null;
+            fontBold = null;
+        }
+
         private String getText(Object element) {
             // If a Concept or a View's parent or ancestor parent folder has a text expression, evaluate it
             String text = getAncestorFolderRenderText((IArchimateModelObject)element);
@@ -410,17 +428,39 @@ public class TreeModelViewer extends TreeViewer {
             // Show bold if using Search
             SearchFilter filter = getSearchFilter();
             if(filter != null && filter.isFiltering() && filter.matchesFilter(element)) {
-                return fontBold;
+                return getBoldFont();
             }
             
             // Italicise unused elements
-            if(Preferences.STORE.getBoolean(IPreferenceConstants.HIGHLIGHT_UNUSED_ELEMENTS_IN_MODEL_TREE) && element instanceof IArchimateConcept) {
+            if(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.HIGHLIGHT_UNUSED_ELEMENTS_IN_MODEL_TREE) && element instanceof IArchimateConcept) {
                 if(!DiagramModelUtils.isArchimateConceptReferencedInDiagrams((IArchimateConcept)element)) {
-                    return fontItalic;
+                    return getItalicFont();
                 }
             }
             
             return null;
+        }
+        
+        private Font getBoldFont() {
+            if(fontBold == null) {
+                fontBold = FontFactory.getBold(getTree().getFont());
+            }
+            return fontBold;
+        }
+        
+        private Font getItalicFont() {
+            if(fontItalic == null) {
+                // Because of timing issues we have to get the italic font from user prefs not from the tree
+                String fontDetails = ArchiPlugin.PREFERENCES.getString(IPreferenceConstants.MODEL_TREE_FONT);
+                if(StringUtils.isSet(fontDetails)) {
+                    Font font = FontFactory.get(fontDetails);
+                    fontItalic = FontFactory.getItalic(font);
+                }
+                else {
+                    fontItalic = FontFactory.getItalic(getTree().getFont());
+                }
+            }
+            return fontItalic;
         }
 
         private Color getForeground(Object element) {

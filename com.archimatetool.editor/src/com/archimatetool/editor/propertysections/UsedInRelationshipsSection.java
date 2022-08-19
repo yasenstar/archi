@@ -29,9 +29,9 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.model.DiagramModelUtils;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.editor.ui.FontFactory;
 import com.archimatetool.editor.ui.UIUtils;
@@ -86,6 +86,9 @@ public class UsedInRelationshipsSection extends AbstractECorePropertySection {
         
         // Font
         UIUtils.setFontFromPreferences(fTableViewer.getTable(), IPreferenceConstants.ANALYSIS_TABLE_FONT, true);
+        
+        // Mac Silicon Item height
+        UIUtils.fixMacSiliconItemHeight(fTableViewer.getTable());
 
         // Column
         TableViewerColumn column = new TableViewerColumn(fTableViewer, SWT.NONE, 0);
@@ -133,7 +136,7 @@ public class UsedInRelationshipsSection extends AbstractECorePropertySection {
         fTableViewer.setComparator(new ViewerComparator());
         
         // DND
-        fTableViewer.addDragSupport(DND.DROP_COPY | DND.DROP_MOVE | DND.DROP_LINK, new Transfer[] { LocalSelectionTransfer.getTransfer() },
+        fTableViewer.addDragSupport(DND.DROP_COPY | DND.DROP_MOVE, new Transfer[] { LocalSelectionTransfer.getTransfer() },
                 new DragSourceListener() {
             @Override
             public void dragStart(DragSourceEvent event) {
@@ -195,7 +198,7 @@ public class UsedInRelationshipsSection extends AbstractECorePropertySection {
         @Override
         public Font getFont(Object element) {
             // Italicise unused elements
-            if(Preferences.STORE.getBoolean(IPreferenceConstants.HIGHLIGHT_UNUSED_ELEMENTS_IN_MODEL_TREE) && element instanceof IArchimateConcept) {
+            if(ArchiPlugin.PREFERENCES.getBoolean(IPreferenceConstants.HIGHLIGHT_UNUSED_ELEMENTS_IN_MODEL_TREE) && element instanceof IArchimateConcept) {
                 if(!DiagramModelUtils.isArchimateConceptReferencedInDiagrams((IArchimateConcept)element)) {
                     return fontItalic;
                 }

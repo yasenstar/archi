@@ -20,8 +20,8 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.factory.IGraphicalObjectUIProvider;
 import com.archimatetool.editor.ui.factory.ObjectUIFactory;
@@ -90,9 +90,8 @@ public abstract class AbstractDiagramModelObjectFigureTests {
         
         diagramModelObject.setFillColor("#010203");
         abstractFigure.setFillColor();
-        Color expected = new Color(null, 1, 2, 3);
+        Color expected = new Color(1, 2, 3);
         assertEquals(expected, abstractFigure.getFillColor());
-        expected.dispose();
     }
     
     @Test
@@ -101,30 +100,28 @@ public abstract class AbstractDiagramModelObjectFigureTests {
         if(textControl != null) {
             diagramModelObject.setFontColor("#010203");
             abstractFigure.setFontColor();
-            Color expected = new Color(null, 1, 2, 3);
+            Color expected = new Color(1, 2, 3);
             assertEquals(expected, textControl.getForegroundColor());
-            expected.dispose();
         }
     }
     
     @Test
     public void testSetLineColor() {
-        Preferences.STORE.setValue(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR, false);
+        ArchiPlugin.PREFERENCES.setValue(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR, false);
         
         assertEquals(ColorFactory.getDefaultLineColor(diagramModelObject), abstractFigure.getLineColor());
         
         diagramModelObject.setLineColor("#010203");
         abstractFigure.setLineColor();
-        Color expected = new Color(null, 1, 2, 3);
+        Color expected = new Color(1, 2, 3);
         assertEquals(expected, abstractFigure.getLineColor());
-        expected.dispose();
     }
     
     @Test
     public void testGetTooltip() {
-        Preferences.STORE.setValue(IPreferenceConstants.VIEW_TOOLTIPS, true);
+        ArchiPlugin.PREFERENCES.setValue(IPreferenceConstants.VIEW_TOOLTIPS, true);
         assertTrue(abstractFigure.getToolTip() instanceof ToolTipFigure);
-        Preferences.STORE.setValue(IPreferenceConstants.VIEW_TOOLTIPS, false);
+        ArchiPlugin.PREFERENCES.setValue(IPreferenceConstants.VIEW_TOOLTIPS, false);
         assertNull(abstractFigure.getToolTip());
     }
     
@@ -136,7 +133,7 @@ public abstract class AbstractDiagramModelObjectFigureTests {
     @Test
     public void testGetDefaultSize() {
         IGraphicalObjectUIProvider provider = (IGraphicalObjectUIProvider)ObjectUIFactory.INSTANCE.getProvider(abstractFigure.getDiagramModelObject());
-        assertEquals(provider.getUserDefaultSize(), abstractFigure.getDefaultSize());
+        assertEquals(provider.getDefaultSize(), abstractFigure.getDefaultSize());
     }
 
     @Test
